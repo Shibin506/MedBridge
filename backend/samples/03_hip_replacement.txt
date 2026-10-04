@@ -1,0 +1,43 @@
+*** SYNTHETIC DOCUMENT - FICTIONAL PATIENT - FOR SOFTWARE TESTING ONLY ***
+
+SUMMIT ORTHOPEDIC HOSPITAL
+Discharge Instructions - Total Hip Replacement (left)
+
+Patient: Helen Park        Surgery date: 06/12        Going home: 06/14        Ref: TEST-3391
+
+BLOOD CLOT PREVENTION
+Apixaban (Eliquis) 2.5 mg - 1 tablet by mouth twice daily for 35 days after surgery.
+This is to prevent blood clots. Do not skip doses. Tell any dentist or doctor that you take it.
+
+PAIN CONTROL
+- Acetaminophen 1,000 mg every 8 hours on a schedule for the first 2 weeks, then as needed.
+  Do not take more than 3,000 mg in 24 hours.
+- Oxycodone 5 mg: 1 tablet every 6 hours ONLY IF pain is not controlled by acetaminophen.
+  This may cause drowsiness and constipation. No driving, no alcohol while taking it.
+  Number of tablets: 20. No refills.
+- Celecoxib was NOT prescribed. Avoid ibuprofen and naproxen while on apixaban.
+
+BOWEL CARE
+- Docusate 100 mg twice daily while taking oxycodone. Add senna 8.6 mg at bedtime if no bowel
+  movement in 2 days.
+
+WOUND CARE
+Keep the dressing clean and dry. You may shower on 06/20 (7 days); no baths, pools or hot tubs
+for 6 weeks. Do not put creams or ointments on the incision. Stitches/staples are removed at the
+2-week visit.
+
+ACTIVITY (hip precautions for 6 weeks)
+- Do NOT bend your hip past 90 degrees (no low chairs or toilets without a raised seat).
+- Do NOT cross your legs or ankles.
+- Do NOT twist your body toward the operated leg.
+- Walk with the walker as taught by physical therapy; short walks 4-5 times a day.
+- No driving until cleared at your follow-up visit.
+
+FOLLOW-UP
+Surgeon Dr. Moreno, 2 weeks after surgery (06/26). Home physical therapy begins within 2 days
+after you get home; the agency will call you.
+
+CALL THE OFFICE (555-0188) if: temperature over 101.5 F, redness, warmth or drainage at the
+incision, increasing pain, or calf pain/swelling in either leg.
+CALL 911 if: sudden shortness of breath, chest pain, coughing blood, signs of stroke, bleeding
+that will not stop, or if you fall and cannot get up or your leg looks shortened or turned.

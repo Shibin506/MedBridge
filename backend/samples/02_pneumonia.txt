@@ -1,0 +1,44 @@
+*** SYNTHETIC DOCUMENT - FICTIONAL PATIENT - FOR SOFTWARE TESTING ONLY ***
+
+LAKESIDE MEDICAL CENTER - Hospital Medicine
+Patient Discharge Summary & Instructions
+
+Name: Daniel Reyes   DOB: 1958 (age 67)   Encounter: TEST-7782
+Admit date: 10/11   Discharge date: 10/15
+Discharging physician: Dr. A. Patel
+
+DIAGNOSIS
+Community-acquired pneumonia (infection in the right lung). Also known: type 2 diabetes,
+high blood pressure.
+
+HOSPITAL COURSE (brief)
+Treated with IV antibiotics for 3 days, then switched to pills. Oxygen was needed on days
+1-2 and is no longer needed. Fever resolved on 10/13.
+
+MEDICATION LIST AT DISCHARGE
+* Amoxicillin-clavulanate (Augmentin) 875/125 mg: 1 tablet by mouth twice a day with meals
+  for 4 more days (last dose on the evening of 10/19). Finish ALL tablets even if you feel better.
+* Prednisone taper: 40 mg daily for 2 days, then 20 mg daily for 2 days, then stop.
+  Take in the morning with food. Prednisone can raise blood sugar.
+* Guaifenesin 600 mg: 1 tablet every 12 hours as needed for cough/chest congestion.
+* Metformin 1000 mg: continue 1 tablet twice daily with meals. (Was held in hospital, OK to
+  resume tonight.)
+* Lisinopril 20 mg: continue once daily.
+* Albuterol inhaler: 2 puffs every 4-6 hours only if wheezing or short of breath.
+
+Do NOT take: over-the-counter cough suppressants containing codeine.
+
+Because you take prednisone, check your blood sugar at least twice daily (before breakfast and
+before dinner) until the prednisone is finished. Call your doctor if readings are above 300.
+
+Follow-up appointments
+ - Primary care, Dr. Singh - in 5 to 7 days.
+ - Chest X-ray - in 6 weeks to confirm the pneumonia has cleared.
+
+Activity: Rest at home for several days. Return to normal activity slowly. Drink plenty of
+fluids unless told otherwise. Do not smoke and avoid smoke exposure.
+
+Return to the Emergency Department or call 911 for: trouble breathing, chest pain, confusion,
+lips or fingertips turning blue, or a fever above 101 F that lasts more than 48 hours.
+Call your doctor for: worsening cough, vomiting that keeps you from taking your pills,
+rash or severe diarrhea (possible antibiotic reaction).
