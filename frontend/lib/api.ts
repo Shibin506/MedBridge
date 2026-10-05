@@ -1,4 +1,4 @@
-import type { AppConfig, DailySchedule, ExtractionResult, PatientPlan, SafetyReport } from "./types";
+import type { AppConfig, DailySchedule, ExtractionResult, FollowUpState, PatientPlan, SafetyReport } from "./types";
 
 async function parse<T>(res: Response): Promise<T> {
   if (res.ok) return (await res.json()) as T;
@@ -35,3 +35,14 @@ const post = <T,>(path: string, body: PlanBody) =>
 export const makePlan = (body: PlanBody) => post<PatientPlan>("/api/plan", body);
 export const getSchedule = (body: PlanBody) => post<DailySchedule>("/api/schedule", body);
 export const getSafety = (body: PlanBody) => post<SafetyReport>("/api/safety", body);
+
+export const createPatient = (body: {
+  plan: PlanBody; mode: "simulator" | "sms"; phone?: string; consent_sms?: boolean; name?: string;
+}) => fetch("/api/patients", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+  .then((r) => parse<FollowUpState>(r));
+export const getFollowUp = (id: string) => fetch(`/api/patients/${id}`).then((r) => parse<FollowUpState>(r));
+export const advance = (id: string) => fetch(`/api/patients/${id}/advance`, { method: "POST" }).then((r) => parse<FollowUpState>(r));
+export const sendReply = (id: string, text: string) =>
+  fetch(`/api/patients/${id}/reply`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) })
+    .then((r) => parse<FollowUpState>(r));
+export const ackAlert = (alertId: number) => fetch(`/api/alerts/${alertId}/ack`, { method: "POST" }).then((r) => parse<{ ok: boolean }>(r));

@@ -115,6 +115,56 @@ def groq_advise(key: str, status: int | None, model_ids: list[str], model: str) 
     return [shape, f"Groq answered with an unexpected error ({status}). Try again in a minute."]
 
 
+def twilio_advise(status: int | None, account: dict, number_found: bool | None, from_number: str) -> list[str]:
+    """Plain-English result of testing the Twilio credentials. ``number_found`` is None when it could not be checked."""
+    if status is None:
+        return ["Could not reach Twilio. Check your internet connection and try again."]
+    if status in (401, 403):
+        return ["FAIL: Twilio rejected the Account SID / Auth Token.",
+                "1. Open https://console.twilio.com and find “Account Info”.",
+                "2. Copy the Account SID (starts with AC) and the Auth Token (click to show it).",
+                "3. Run ./scripts/set-key.sh twilio and paste them."]
+    if status != 200:
+        return [f"Twilio answered with an unexpected error ({status}). Try again in a minute."]
+    kind = (account.get("type") or "").lower()
+    lines = ["PASS: Twilio accepted your Account SID and Auth Token."]
+    if account.get("status") and account["status"] != "active":
+        lines.append(f"!! Your Twilio account status is “{account['status']}”. Texts will not send until it is active.")
+    if number_found is False:
+        lines += [f"!! The number {from_number} is not in this Twilio account. Check TWILIO_FROM_NUMBER, or buy a number at",
+                  "   Console > Phone Numbers > Manage > Buy a number."]
+    elif number_found:
+        lines.append(f"The number {from_number} belongs to your account.")
+    if kind == "trial":
+        lines += ["This is a TRIAL account: it can only text phone numbers you have verified",
+                  "(Console > Phone Numbers > Manage > Verified Caller IDs), and messages start with a trial notice.",
+                  "US carriers may also block texts from a new number until it is registered (Twilio error 30034).",
+                  "If texts do not arrive, use the phone simulator for your demo."]
+    lines.append("Next: for REPLIES to reach the app, set up the webhook (see docs/setup-keys.md).")
+    return lines
+
+
+def run_twilio() -> int:
+    sid, token, number = (os.environ.get(k, "").strip() for k in ("TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_FROM_NUMBER"))
+    if not (sid and token and number):
+        print("Twilio is not set up. Run ./scripts/set-key.sh twilio and paste the three values.")
+        return 2
+    print(f"Testing Twilio (account starts with “{sid[:4]}”, auth token {len(token)} characters)...")
+    base = f"https://api.twilio.com/2010-04-01/Accounts/{sid}"
+    try:
+        r = httpx.get(base + ".json", auth=(sid, token), timeout=20)
+        status, account = r.status_code, (r.json() if r.status_code == 200 else {})
+        found = None
+        if status == 200:
+            n = httpx.get(base + "/IncomingPhoneNumbers.json", params={"PhoneNumber": number}, auth=(sid, token), timeout=20)
+            found = bool(n.json().get("incoming_phone_numbers")) if n.status_code == 200 else None
+    except (httpx.HTTPError, ValueError):
+        status, account, found = None, {}, None
+    print()
+    print("\n".join(twilio_advise(status, account, found, number)))
+    return 0 if status == 200 else 1
+
+
 def run_groq() -> int:
     key = os.environ.get("GROQ_API_KEY", "").strip()
     if not key:
@@ -159,7 +209,9 @@ def try_restoring_prefix(key: str, model: str) -> tuple[str, bool] | None:
     return None
 
 
-def run(fix: bool = False) -> int:
+def run(fix: bool = False, twilio: bool = False) -> int:
+    if twilio:
+        return run_twilio()
     if selected_provider() == "groq":
         return run_groq()
     key = (os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") or "").strip()

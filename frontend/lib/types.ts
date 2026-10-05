@@ -47,7 +47,19 @@ export interface PatientPlan {
   medications: PlanMedication[]; follow_ups: PlanItem[]; warning_signs: PlanItem[]; restrictions: PlanItem[];
   disclaimer: string; disclaimer_en: string;
 }
-export interface AppConfig { demo: boolean; languages: Record<string, string> }
+export interface AppConfig { demo: boolean; languages: Record<string, string>; sms: boolean }
+
+export interface FollowUpState {
+  patient: { id: string; name: string | null; mode: "simulator" | "sms"; opted_out: boolean; phone_last4: string; day: number };
+  messages: { id: number; direction: "in" | "out"; body: string; kind: string; sim_label: string }[];
+  alerts: { id: number; level: "urgent" | "same_day" | "review"; title: string; detail: string; day: number; acknowledged: boolean }[];
+  weights: { day: number; pounds: number }[];
+  adherence: { taken: number; missed: number; unanswered: number };
+  next_event: { label: string; kind: string } | null;
+  alert_rules: { sign: string; action: string; level: string }[];
+  weight_rules: string[];
+  checkin_asks_weight: boolean;
+}
 
 export interface ScheduleItem { name: string; dose: string | null; note: string | null; status: Status }
 export interface ScheduleSlot { time: string; label: string; items: ScheduleItem[] }

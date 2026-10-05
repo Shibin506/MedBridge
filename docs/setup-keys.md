@@ -39,30 +39,21 @@ wrongly, which is a good measure of how well a given model follows the "copy exa
    (Vertex) key, add `GEMINI_BACKEND=vertex` to `.env`. `./scripts/check-key.sh --fix` repairs a key that lost its `AQ.` start.
 3. To use Gemini when a Groq key is also saved, set `MEDBRIDGE_LLM=gemini` in `.env`.
 
-## 2. SMS: Twilio (needed from Phase 4)
+## 2. Text messages: Twilio (for real texts; the phone simulator needs none of this)
 
-What Twilio calls things: you need the **Account SID**, the **Auth Token**, and **a phone number**. (Twilio also has
-"API keys" starting with `SK`; we do not need those.)
+What Twilio calls things: the **Account SID** (starts with `AC`), the **Auth Token**, and **a phone number**. (Twilio "API keys" starting with `SK` are not needed.)
 
-1. Sign up at https://www.twilio.com/try-twilio (email + your mobile number; you get trial credit).
-2. Verify your email and phone when asked.
-3. Open the Console (https://console.twilio.com). The dashboard's **Account Info** box shows the **Account SID**
-   (starts with `AC`) and the **Auth Token** (click to reveal).
-4. Get a number: **Phone Numbers -> Manage -> Buy a number** (the trial credit pays for it). Choose one with SMS.
-5. Trial accounts can only text numbers you have verified: **Phone Numbers -> Manage -> Verified Caller IDs ->
-   Add a new caller ID**, and verify your own mobile.
-6. Put these in `.env`:
-   ```
-   TWILIO_ACCOUNT_SID=AC...
-   TWILIO_AUTH_TOKEN=...
-   TWILIO_FROM_NUMBER=+1XXXXXXXXXX
-   ```
+1. Sign up at https://www.twilio.com/try-twilio (email and your mobile number; you get trial credit) and verify both.
+2. In the Console (https://console.twilio.com), **Account Info** shows the Account SID and Auth Token (click to reveal).
+3. Get a number: **Phone Numbers > Manage > Buy a number** (trial credit pays for it), one with SMS.
+4. Trial accounts can only text numbers you verified: **Phone Numbers > Manage > Verified Caller IDs > Add**, and verify your own mobile.
+5. In the project folder run `./scripts/set-key.sh twilio` and paste the three values. It saves `.env` and tests them (including that the number is in your account).
+6. Test any time with `./scripts/check-key.sh twilio`.
+7. For replies to reach the app, follow "Real texts with Twilio" in [phase-4.md](phase-4.md) (a tunnel such as `ngrok http 8000`, `MEDBRIDGE_PUBLIC_URL`, and the webhook address).
 
 Things to know:
-- **Trial limits:** messages start with "Sent from your Twilio trial account" and go only to verified numbers.
-- **US carrier registration:** US carriers block texts from unregistered ordinary numbers (Twilio error 30034/30032).
-  Trial accounts may hit this. Twilio's toll-free verification or "A2P 10DLC" registration fixes it but takes days.
-  Plan B for a hackathon: MedBridge will include an on-screen **SMS simulator**, so the demo never depends on carriers.
-- **Receiving replies** needs a public web address that Twilio can call. On your laptop that means a tunnel tool such
-  as ngrok or Cloudflare Tunnel. We will set that up in Phase 4.
-- **Consent:** only text people who agreed to receive messages. Twilio handles STOP / HELP automatically.
+- **Trial limits:** messages start with a "trial account" notice and go only to verified numbers.
+- **US carrier registration:** US carriers block texts from unregistered ordinary numbers (Twilio errors 30034 / 30032).
+  Trial accounts may hit this. Twilio's toll-free verification or A2P 10DLC registration fixes it but takes days.
+  For a hackathon, the **phone simulator** means the demo never depends on carriers.
+- **Consent:** only text people who agreed. Twilio handles STOP / HELP automatically, and MedBridge honours them too.

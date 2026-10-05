@@ -97,3 +97,13 @@ input, select { font: inherit; padding: 8px 10px; border-radius: 8px; border: 1.
 .item h3::first-letter { text-transform: uppercase; }
 .uncovered li { margin: 6px 0; }
 .uncovered button { margin-left: 8px; }
+
+.thread { display: flex; flex-direction: column; gap: 8px; max-height: 52vh; overflow-y: auto; padding: 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); }
+.bubble { max-width: 88%; padding: 8px 12px; border-radius: 14px; font-size: .95rem; }
+.bubble p { margin: 2px 0; } .bubble .when { display: block; font-size: .7rem; color: var(--muted); margin-bottom: 2px; }
+.bubble.out { align-self: flex-start; background: var(--card); border: 1px solid var(--line); }
+.bubble.in { align-self: flex-end; background: var(--brand); color: var(--brand-ink); }
+.bubble.in .when { color: inherit; opacity: .8; }
+.chips { gap: 6px; } .chip { font-size: .85rem; padding: 6px 12px; min-height: 36px; border-radius: 999px; }
+.chart { width: 100%; height: auto; color: var(--ink); }
+.finding.done { opacity: .6; }

@@ -1,6 +1,7 @@
 "use client";
 import SafetyPanel from "./SafetyPanel";
 import SchedulePanel from "./SchedulePanel";
+import { useState } from "react";
 import type { AppConfig, Extras, PatientPlan, PlanItem } from "@/lib/types";
 
 const STATUS_TEXT: Record<string, string> = { new: "New", changed: "Changed", continue: "Keep taking" };
@@ -21,9 +22,12 @@ function ItemList({ items }: { items: PlanItem[] }) {
 interface Props {
   plan: PatientPlan; extras: Extras | null; config: AppConfig; busy: boolean; error: string | null;
   onBack: () => void; onLanguage: (code: string) => void;
+  onStartCheckins: (c: { mode: "simulator" | "sms"; phone?: string; consent: boolean }) => void; checkinError: string | null;
 }
 
-export default function PlanStep({ plan, extras, config, busy, error, onBack, onLanguage }: Props) {
+export default function PlanStep({ plan, extras, config, busy, error, onBack, onLanguage, onStartCheckins, checkinError }: Props) {
+  const [phone, setPhone] = useState("");
+  const [consent, setConsent] = useState(false);
   const stopped = plan.medications.filter((m) => m.status === "stop");
   const taking = plan.medications.filter((m) => m.status !== "stop");
   const rtl = plan.language === "ar";
@@ -87,6 +91,32 @@ export default function PlanStep({ plan, extras, config, busy, error, onBack, on
       {plan.follow_ups.length > 0 && <section className="card"><h2>Appointments and tests</h2><ItemList items={plan.follow_ups} /></section>}
       {plan.warning_signs.length > 0 && <section className="card"><h2>Warning signs</h2><ItemList items={plan.warning_signs} /></section>}
       {plan.restrictions.length > 0 && <section className="card"><h2>Daily care at home</h2><ItemList items={plan.restrictions} /></section>}
+
+      <section className="card no-print" dir="ltr" lang="en">
+        <h2>Reminders and daily check-ins</h2>
+        <p>MedBridge can text you when it is time for each medicine, and check in each morning. If you report a warning sign from your
+          paper, it tells you what your paper says to do and alerts your care team. <strong>Texting is not for emergencies: call 911.</strong></p>
+        <div className="row">
+          <button className="btn primary" disabled={busy} onClick={() => onStartCheckins({ mode: "simulator", consent: false })}>
+            Try it on the phone simulator
+          </button>
+        </div>
+        {config.sms && (
+          <div className="form">
+            <label>Your mobile number (for example +15551234567)
+              <input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" autoComplete="tel" />
+            </label>
+            <label className="check">
+              <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
+              I agree to receive text messages from MedBridge. Message and data rates may apply. I can reply STOP at any time.
+            </label>
+            <button className="btn" disabled={busy || !consent || !phone.trim()} onClick={() => onStartCheckins({ mode: "sms", phone, consent })}>
+              Text my phone
+            </button>
+          </div>
+        )}
+        {checkinError && <p role="alert" className="error">{checkinError}</p>}
+      </section>
 
       <section className="card disclaimer">
         <p>{plan.disclaimer}</p>

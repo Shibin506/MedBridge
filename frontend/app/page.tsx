@@ -3,13 +3,16 @@ import { useEffect, useState } from "react";
 import ConfirmStep from "@/components/ConfirmStep";
 import PlanStep from "@/components/PlanStep";
 import UploadStep from "@/components/UploadStep";
-import { getConfig, getSafety, getSchedule, makePlan } from "@/lib/api";
-import type { AppConfig, Extras, ExtractionResult, PatientPlan } from "@/lib/types";
+import FollowUpStep from "@/components/FollowUpStep";
+import { createPatient, getConfig, getSafety, getSchedule, makePlan } from "@/lib/api";
+import type { AppConfig, Extras, ExtractionResult, FollowUpState, PatientPlan } from "@/lib/types";
 
 type Opts = { language: string; reading_level: string; acknowledged_unclear: boolean; acknowledged_review: boolean };
 
 export default function Home() {
-  const [config, setConfig] = useState<AppConfig>({ demo: false, languages: { en: "English" } });
+  const [config, setConfig] = useState<AppConfig>({ demo: false, languages: { en: "English" }, sms: false });
+  const [followUp, setFollowUp] = useState<FollowUpState | null>(null);
+  const [followUpError, setFollowUpError] = useState<string | null>(null);
   const [extraction, setExtraction] = useState<ExtractionResult | null>(null);
   const [plan, setPlan] = useState<PatientPlan | null>(null);
   const [extras, setExtras] = useState<Extras | null>(null);
@@ -38,7 +41,17 @@ export default function Home() {
     finally { setBusy(false); }
   }
 
-  function reset() { setExtraction(null); setPlan(null); setExtras(null); setOpts(null); setError(null); }
+  async function startCheckins(choice: { mode: "simulator" | "sms"; phone?: string; consent: boolean }) {
+    if (!extraction || !opts) return;
+    setBusy(true); setFollowUpError(null);
+    try {
+      setFollowUp(await createPatient({
+        plan: { extraction, ...opts }, mode: choice.mode, phone: choice.phone, consent_sms: choice.consent,
+      }));
+    } catch (e) { setFollowUpError((e as Error).message); } finally { setBusy(false); }
+  }
+
+  function reset() { setExtraction(null); setPlan(null); setExtras(null); setOpts(null); setError(null); setFollowUp(null); }
 
   return (
     <>
@@ -54,13 +67,15 @@ export default function Home() {
       )}
       <main>
         {!extraction && <UploadStep onDone={setExtraction} />}
-        {extraction && !plan && (
+        {extraction && !plan && !followUp && (
           <ConfirmStep extraction={extraction} config={config} busy={busy} error={error}
             onChange={setExtraction} onBack={reset} onMakePlan={generate} />
         )}
-        {extraction && plan && (
+        {followUp && <FollowUpStep initial={followUp} onBack={() => setFollowUp(null)} />}
+        {extraction && plan && !followUp && (
           <PlanStep plan={plan} extras={extras} config={config} busy={busy} error={error}
             onBack={() => { setPlan(null); setExtras(null); setError(null); }}
+            onStartCheckins={startCheckins} checkinError={followUpError}
             onLanguage={(language) => opts && void generate({ ...opts, language })} />
         )}
       </main>
