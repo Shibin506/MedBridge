@@ -14,7 +14,7 @@ when something looks wrong.
 |---|---|---|
 | 1 | Upload -> extract meds/follow-ups/warning signs/restrictions as JSON, each with a source quote that code verifies | **done** |
 | 2 | Confirm screen + plain-language plan (+ translation), demo mode | **done** |
-| 3 | Drug interaction / duplicate check (RxNav) + daily schedule | next |
+| 3 | Daily schedule + safety check (duplicates, stopped-but-listed, label-based interaction hints) | **done** (live lookups need a quick check, see docs/phase-3.md) |
 | 4 | Twilio SMS check-ins, reply parsing, red-flag rules, alerts | |
 | 5 | Caregiver/nurse dashboard, adherence timeline | |
 | 6 | Polish, demo video | |
@@ -37,7 +37,7 @@ Then open http://localhost:3000. Press Ctrl+C to stop. The first run takes a cou
 cd backend
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt
-pytest                                   # 32 tests, the LLM is faked
+pytest                                   # 93 tests, the LLM is faked
 MEDBRIDGE_DEMO=1 uvicorn app.main:app --port 8000
 
 # terminal 2: frontend
@@ -61,3 +61,4 @@ python scripts/try_extract.py samples/01_heart_failure.txt   # extraction only, 
 
 - [docs/phase-1.md](docs/phase-1.md): upload -> verified extraction
 - [docs/phase-2.md](docs/phase-2.md): confirm screen -> plain-language plan
+- [docs/phase-3.md](docs/phase-3.md): daily schedule and safety check

@@ -1,4 +1,4 @@
-import type { AppConfig, ExtractionResult, PatientPlan } from "./types";
+import type { AppConfig, DailySchedule, ExtractionResult, PatientPlan, SafetyReport } from "./types";
 
 async function parse<T>(res: Response): Promise<T> {
   if (res.ok) return (await res.json()) as T;
@@ -23,10 +23,14 @@ export function extract(file: File): Promise<ExtractionResult> {
   return fetch("/api/extract", { method: "POST", body: form }).then((r) => parse<ExtractionResult>(r));
 }
 
-export function makePlan(body: {
+export interface PlanBody {
   extraction: ExtractionResult; language: string; reading_level: string; acknowledged_unclear: boolean;
-}): Promise<PatientPlan> {
-  return fetch("/api/plan", {
-    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
-  }).then((r) => parse<PatientPlan>(r));
 }
+
+const post = <T,>(path: string, body: PlanBody) =>
+  fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+    .then((r) => parse<T>(r));
+
+export const makePlan = (body: PlanBody) => post<PatientPlan>("/api/plan", body);
+export const getSchedule = (body: PlanBody) => post<DailySchedule>("/api/schedule", body);
+export const getSafety = (body: PlanBody) => post<SafetyReport>("/api/safety", body);

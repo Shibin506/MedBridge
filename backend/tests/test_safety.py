@@ -223,3 +223,22 @@ def test_safety_endpoint(demo):
     r = demo.post("/safety", json=confirmed_body(demo, "04_gallbladder_surgery.txt")).json()
     assert r["duplicates"][0]["ingredient"] == "acetaminophen"
     assert r["stopped_conflicts"][0]["still_listed"] == "Motrin IB"
+
+
+def test_offline_generic_names_do_not_trigger_a_scary_note():
+    r = SafetyChecker(labels=DemoLabelSource()).check(sample("04_gallbladder_surgery.txt"))
+    assert not any("drug-name database" in n for n in r.notes)
+
+
+def test_note_appears_when_the_name_lookup_failed_or_found_nothing():
+    ex = sample("04_gallbladder_surgery.txt")
+
+    def down(url, params):
+        raise LookupUnavailable("offline")
+
+    r = SafetyChecker(resolver=RxNormResolver(down)).check(ex)
+    assert any("could not be reached" in n for n in r.notes)
+
+    unknown = lambda url, params: {"idGroup": {"name": "x"}} if "rxcui.json" in url else {"approximateGroup": {"candidate": []}}  # noqa: E731
+    r = SafetyChecker(resolver=RxNormResolver(unknown)).check(ex)
+    assert any("were not found in the drug-name database" in n and "Ondansetron" in n for n in r.notes)

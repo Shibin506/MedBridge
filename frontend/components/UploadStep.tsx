@@ -7,6 +7,7 @@ const LABELS: Record<string, string> = {
   "01_heart_failure.txt": "Heart failure (fictional patient)",
   "02_pneumonia.txt": "Pneumonia (fictional patient)",
   "03_hip_replacement.txt": "Hip replacement (fictional patient)",
+  "04_gallbladder_surgery.txt": "Gallbladder surgery: duplicates and conflicts (fictional patient)",
 };
 
 export default function UploadStep({ onDone }: { onDone: (ex: ExtractionResult) => void }) {

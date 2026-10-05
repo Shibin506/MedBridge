@@ -45,3 +45,21 @@ export interface PatientPlan {
   disclaimer: string; disclaimer_en: string;
 }
 export interface AppConfig { demo: boolean; languages: Record<string, string> }
+
+export interface ScheduleItem { name: string; dose: string | null; note: string | null; status: Status }
+export interface ScheduleSlot { time: string; label: string; items: ScheduleItem[] }
+export interface DailySchedule {
+  slots: ScheduleSlot[];
+  as_needed: { name: string; dose: string | null; how_often: string | null; note: string | null }[];
+  tapers: { name: string; steps: { when: string; dose: string }[]; after: string | null; note: string | null }[];
+  unscheduled: { name: string; reason: string }[];
+}
+export interface SafetyReport {
+  normalized: { name: string; ingredients: string[]; source: "local" | "rxnorm" | "name" }[];
+  duplicates: { ingredient: string; medicines: string[]; message: string }[];
+  stopped_conflicts: { ingredient: string; stopped: string; still_listed: string; message: string }[];
+  interactions: { drug_a: string; drug_b: string; source: string; excerpt: string }[];
+  interaction_check: "done" | "unavailable" | "not_run";
+  notes: string[];
+}
+export interface Extras { schedule: DailySchedule | null; safety: SafetyReport | null }

@@ -3,8 +3,8 @@ import { useEffect, useState } from "react";
 import ConfirmStep from "@/components/ConfirmStep";
 import PlanStep from "@/components/PlanStep";
 import UploadStep from "@/components/UploadStep";
-import { getConfig, makePlan } from "@/lib/api";
-import type { AppConfig, ExtractionResult, PatientPlan } from "@/lib/types";
+import { getConfig, getSafety, getSchedule, makePlan } from "@/lib/api";
+import type { AppConfig, Extras, ExtractionResult, PatientPlan } from "@/lib/types";
 
 type Opts = { language: string; reading_level: string; acknowledged_unclear: boolean };
 
@@ -12,6 +12,7 @@ export default function Home() {
   const [config, setConfig] = useState<AppConfig>({ demo: false, languages: { en: "English" } });
   const [extraction, setExtraction] = useState<ExtractionResult | null>(null);
   const [plan, setPlan] = useState<PatientPlan | null>(null);
+  const [extras, setExtras] = useState<Extras | null>(null);
   const [opts, setOpts] = useState<Opts | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -21,12 +22,23 @@ export default function Home() {
   async function generate(next: Opts) {
     if (!extraction) return;
     setBusy(true); setError(null); setOpts(next);
-    try { setPlan(await makePlan({ extraction, ...next })); }
+    const body = { extraction, ...next };
+    try {
+      // The schedule and safety check do not depend on the language, so they are fetched once per
+      // confirmed list and kept when the patient only switches language. If either fails, the plan
+      // still shows and the screen says that part could not be loaded.
+      const [p, sched, safety] = await Promise.all([
+        makePlan(body),
+        extras ? Promise.resolve(extras.schedule) : getSchedule(body).catch(() => null),
+        extras ? Promise.resolve(extras.safety) : getSafety(body).catch(() => null),
+      ]);
+      setPlan(p); setExtras({ schedule: sched, safety });
+    }
     catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
   }
 
-  function reset() { setExtraction(null); setPlan(null); setOpts(null); setError(null); }
+  function reset() { setExtraction(null); setPlan(null); setExtras(null); setOpts(null); setError(null); }
 
   return (
     <>
@@ -47,8 +59,8 @@ export default function Home() {
             onChange={setExtraction} onBack={reset} onMakePlan={generate} />
         )}
         {extraction && plan && (
-          <PlanStep plan={plan} config={config} busy={busy} error={error}
-            onBack={() => { setPlan(null); setError(null); }}
+          <PlanStep plan={plan} extras={extras} config={config} busy={busy} error={error}
+            onBack={() => { setPlan(null); setExtras(null); setError(null); }}
             onLanguage={(language) => opts && void generate({ ...opts, language })} />
         )}
       </main>

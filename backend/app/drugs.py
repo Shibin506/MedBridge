@@ -119,7 +119,8 @@ class RxNormResolver:
         self._get = get_json
         self._local = local or LocalResolver()
         self._cache: dict[str, list[str] | None] = {}
-        self.unavailable = False
+        self.unavailable = False  # the service could not be reached
+        self.unmatched: list[str] = []  # the service answered but did not know the name
 
     def resolve(self, name: str, aliases: list[str]) -> NormalizedMed:
         local = self._local.resolve(name, aliases)
@@ -133,7 +134,11 @@ class RxNormResolver:
                 self.unavailable = True
                 return local
         ingredients = self._cache[term]
-        return NormalizedMed(name=name, ingredients=ingredients, source="rxnorm") if ingredients else local
+        if not ingredients:
+            if name not in self.unmatched:
+                self.unmatched.append(name)
+            return local
+        return NormalizedMed(name=name, ingredients=ingredients, source="rxnorm")
 
     def _lookup(self, term: str) -> list[str] | None:
         data = self._get(f"{self.BASE}/rxcui.json", {"name": term, "search": 2}) or {}

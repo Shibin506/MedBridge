@@ -140,9 +140,12 @@ class SafetyChecker:
         # 3. interaction hints from label text
         interactions, status, notes = self._interactions(list(by_ing))
         notes.append(ALWAYS_NOTE)
-        if any(n.source == "name" for n in normalized):
-            notes.append("Some medicine names were taken as written and could not be matched to a drug database: "
-                         + ", ".join(n.name for n in normalized if n.source == "name") + ".")
+        # Only worry the patient when a database lookup was really attempted and did not work out.
+        if getattr(self.resolver, "unavailable", False):
+            notes.append("The drug-name database could not be reached, so some medicine names were used as written.")
+        elif getattr(self.resolver, "unmatched", None):
+            notes.append("These names were not found in the drug-name database and were used as written: "
+                         + ", ".join(self.resolver.unmatched) + ". Please check the spelling against your paper.")
         return SafetyReport(normalized=normalized, duplicates=duplicates, stopped_conflicts=conflicts,
                             interactions=interactions, interaction_check=status, notes=notes)
 

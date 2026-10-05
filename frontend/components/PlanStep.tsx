@@ -1,5 +1,7 @@
 "use client";
-import type { AppConfig, PatientPlan, PlanItem } from "@/lib/types";
+import SafetyPanel from "./SafetyPanel";
+import SchedulePanel from "./SchedulePanel";
+import type { AppConfig, Extras, PatientPlan, PlanItem } from "@/lib/types";
 
 const STATUS_TEXT: Record<string, string> = { new: "New", changed: "Changed", continue: "Keep taking" };
 
@@ -17,11 +19,11 @@ function ItemList({ items }: { items: PlanItem[] }) {
 }
 
 interface Props {
-  plan: PatientPlan; config: AppConfig; busy: boolean; error: string | null;
+  plan: PatientPlan; extras: Extras | null; config: AppConfig; busy: boolean; error: string | null;
   onBack: () => void; onLanguage: (code: string) => void;
 }
 
-export default function PlanStep({ plan, config, busy, error, onBack, onLanguage }: Props) {
+export default function PlanStep({ plan, extras, config, busy, error, onBack, onLanguage }: Props) {
   const stopped = plan.medications.filter((m) => m.status === "stop");
   const taking = plan.medications.filter((m) => m.status !== "stop");
   const rtl = plan.language === "ar";
@@ -43,6 +45,8 @@ export default function PlanStep({ plan, config, busy, error, onBack, onLanguage
       <h1>Your plan</h1>
       <p className="lead">{plan.summary}</p>
 
+      <SafetyPanel report={extras?.safety ?? null} />
+
       {stopped.length > 0 && (
         <section className="card danger-card">
           <h2>Stop taking</h2>
@@ -52,6 +56,8 @@ export default function PlanStep({ plan, config, busy, error, onBack, onLanguage
           ))}
         </section>
       )}
+
+      <SchedulePanel schedule={extras?.schedule ?? null} />
 
       {taking.length > 0 && (
         <section className="card">
