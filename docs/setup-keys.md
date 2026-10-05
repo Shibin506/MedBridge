@@ -7,7 +7,7 @@ Never paste a key into a chat, an issue, a commit or a screenshot. Keys live onl
 
 1. Go to https://aistudio.google.com/apikey and sign in with a Google account.
 2. Click **Create API key** and copy it.
-3. In the project folder: `cp .env.example .env`, open `.env`, and set `GEMINI_API_KEY=` to your key (no quotes, no spaces).
+3. In the project folder run `./scripts/set-key.sh`, paste the key when asked (nothing shows on screen), press Enter. It writes `.env` for you and tests the key. (Editing `.env` by hand also works: one line, `GEMINI_API_KEY=<key>`, no quotes or spaces.)
 4. Run `./scripts/run-demo.sh --live`, then upload one of the **fictional** samples.
 
 **Test the key before anything else:** `./scripts/check-key.sh`. It sends one tiny request to Google and tells you in
