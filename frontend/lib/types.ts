@@ -15,10 +15,12 @@ interface Verified {
 export interface Medication extends Verified {
   name: string; dose: string | null; route: Route | null; frequency: string | null;
   duration: string | null; purpose: string | null; instructions: string | null; status: Status;
+  previous_dose: string | null;
 }
-export interface FollowUp extends Verified { what: string; with_whom: string | null; when: string | null }
+export interface FollowUp extends Verified { what: string; with_whom: string | null; when: string | null; contact: string | null }
 export interface WarningSign extends Verified { symptom: string; action: string }
-export interface Restriction extends Verified { category: "diet" | "activity" | "wound_care" | "other"; instruction: string }
+export type RestrictionCategory = "diet" | "activity" | "wound_care" | "monitoring" | "medication_limit" | "other";
+export interface Restriction extends Verified { category: RestrictionCategory; instruction: string }
 export type AnyItem = Medication | FollowUp | WarningSign | Restriction;
 
 export interface ExtractionResult {

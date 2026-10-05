@@ -91,3 +91,5 @@ input, select { font: inherit; padding: 8px 10px; border-radius: 8px; border: 1.
 .slot:first-of-type { border-top: 0; } .slot ul { margin: 0; padding-left: 18px; }
 .when { display: grid; align-content: start; } .when span { font-size: .8rem; color: var(--muted); }
 @media (max-width: 600px) { .slot { grid-template-columns: 1fr; gap: 4px; } }
+
+.add-item { width: 100%; border: 1.5px dashed var(--line); margin: 6px 0 14px; }

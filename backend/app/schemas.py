@@ -42,7 +42,17 @@ class MedicationDraft(BaseModel):
         description="'new' started this stay, 'changed' dose/frequency changed, "
         "'continue' unchanged home med, 'stop' patient must stop taking it."
     )
+    previous_dose: str | None = Field(
+        default=None,
+        description="ONLY when status is 'changed': the dose BEFORE the change, e.g. '20 mg'. null otherwise.",
+    )
     source_quote: str = Field(description="Verbatim excerpt from the document that supports this item.")
+
+    @field_validator("name")
+    @classmethod
+    def _capitalize_name(cls, value: str) -> str:
+        value = value.strip()
+        return value[:1].upper() + value[1:]
 
     @field_validator("duration")
     @classmethod
@@ -55,6 +65,10 @@ class FollowUpDraft(BaseModel):
     what: str = Field(description="Appointment or test, e.g. 'Cardiology clinic visit', 'Blood test (BMP)'.")
     with_whom: str | None = Field(description="Clinic or clinician if stated, else null.")
     when: str | None = Field(description="Timing exactly as written, e.g. 'within 7 days'. null if not stated.")
+    contact: str | None = Field(
+        default=None,
+        description="Phone number or how to book, exactly as written (e.g. '555-0142'). null if the paper gives none.",
+    )
     source_quote: str = Field(description="Verbatim excerpt from the document that supports this item.")
 
 
@@ -65,7 +79,10 @@ class WarningSignDraft(BaseModel):
 
 
 class RestrictionDraft(BaseModel):
-    category: Literal["diet", "activity", "wound_care", "other"]
+    category: Literal["diet", "activity", "wound_care", "monitoring", "medication_limit", "other"] = Field(
+        description="'monitoring' = something to measure or record (weigh yourself, blood sugar, blood pressure); "
+        "'medication_limit' = a permitted over-the-counter medicine or a maximum daily amount."
+    )
     instruction: str = Field(description="The do/don't instruction, e.g. 'No more than 2,000 mg sodium per day'.")
     source_quote: str = Field(description="Verbatim excerpt from the document that supports this item.")
 
@@ -161,6 +178,7 @@ class PlanRequest(BaseModel):
     language: str = "en"
     reading_level: Literal["simple", "standard"] = "simple"
     acknowledged_unclear: bool = False  # patient has read the "please check" notes
+    acknowledged_review: bool = False  # patient says they compared the whole list with their paper
 
 
 class PlanMedication(BaseModel):

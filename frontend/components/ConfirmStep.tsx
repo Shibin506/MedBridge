@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
+import AddItem from "./AddItem";
 import ItemCard from "./ItemCard";
 import { findQuote } from "@/lib/highlight";
 import type { AnyItem, AppConfig, Category, ExtractionResult } from "@/lib/types";
@@ -18,12 +19,13 @@ interface Props {
   error: string | null;
   onChange: (ex: ExtractionResult) => void;
   onBack: () => void;
-  onMakePlan: (opts: { language: string; reading_level: string; acknowledged_unclear: boolean }) => void;
+  onMakePlan: (opts: { language: string; reading_level: string; acknowledged_unclear: boolean; acknowledged_review: boolean }) => void;
 }
 
 export default function ConfirmStep({ extraction: ex, config, busy, error, onChange, onBack, onMakePlan }: Props) {
   const [selected, setSelected] = useState<{ cat: Category; idx: number } | null>(null);
   const [ack, setAck] = useState(false);
+  const [reviewed, setReviewed] = useState(false);
   const [language, setLanguage] = useState("en");
   const [level, setLevel] = useState("simple");
   const markRef = useRef<HTMLElement>(null);
@@ -32,7 +34,7 @@ export default function ConfirmStep({ extraction: ex, config, busy, error, onCha
   const all = SECTIONS.flatMap((s) => items(s.key));
   const remaining = all.filter((i) => i.needs_confirmation && !i.patient_confirmed).length;
   const needAck = ex.unclear_items.length > 0 && !ack;
-  const canMake = remaining === 0 && !needAck && all.length > 0 && !busy;
+  const canMake = remaining === 0 && !needAck && reviewed && all.length > 0 && !busy;
 
   const range = useMemo(() => {
     if (!selected) return null;
@@ -58,7 +60,7 @@ export default function ConfirmStep({ extraction: ex, config, busy, error, onCha
       <p className="lead">
         {remaining > 0
           ? <><strong>{remaining} item{remaining > 1 ? "s" : ""}</strong> {remaining > 1 ? "need" : "needs"} your check before we can make your plan.</>
-          : <>Everything has been checked. Review the list once more, then make your plan.</>}
+          : <>Our checker found nothing wrong, but it can only tell that the words exist in your paper, not that they mean what we think. <strong>Please read each item against your paper yourself.</strong></>}
         {" "}Tap an item to see where it came from in your paper.
       </p>
 
@@ -77,7 +79,7 @@ export default function ConfirmStep({ extraction: ex, config, busy, error, onCha
         </section>
 
         <div>
-          {SECTIONS.map(({ key, title }) => items(key).length > 0 && (
+          {SECTIONS.map(({ key, title }) => (
             <section key={key}>
               <h2>{title}</h2>
               {items(key).map((item, idx) => (
@@ -91,6 +93,7 @@ export default function ConfirmStep({ extraction: ex, config, busy, error, onCha
                   onSave={(patch) => update(key, (l) => l.map((x, i) => (i === idx ? { ...x, ...patch, patient_confirmed: true } : x)))}
                 />
               ))}
+              <AddItem category={key} onAdd={(item) => update(key, (l) => [...l, item])} />
             </section>
           ))}
 
@@ -107,6 +110,10 @@ export default function ConfirmStep({ extraction: ex, config, busy, error, onCha
 
           <section className="card">
             <h2>Make my plan</h2>
+            <label className="check">
+              <input type="checkbox" checked={reviewed} onChange={(e) => setReviewed(e.target.checked)} />
+              I compared this list with my paper. It is correct, or I fixed what was wrong.
+            </label>
             <div className="form">
               <label>Language
                 <select value={language} onChange={(e) => setLanguage(e.target.value)}>
@@ -124,11 +131,12 @@ export default function ConfirmStep({ extraction: ex, config, busy, error, onCha
               <p className="small" role="status">
                 {remaining > 0 ? "Check the highlighted items first. " : ""}
                 {needAck ? "Tick “I have read this” above. " : ""}
+                {!reviewed ? "Tick the box to say you compared the list with your paper. " : ""}
                 {all.length === 0 ? "There are no items left." : ""}
               </p>
             )}
             <button className="btn primary big" disabled={!canMake}
-              onClick={() => onMakePlan({ language, reading_level: level, acknowledged_unclear: ack })}>
+              onClick={() => onMakePlan({ language, reading_level: level, acknowledged_unclear: ack, acknowledged_review: reviewed })}>
               {busy ? "Writing your plan…" : "Make my plan"}
             </button>
             {error && <p role="alert" className="error">{error}</p>}

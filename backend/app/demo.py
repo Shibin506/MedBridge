@@ -14,13 +14,13 @@ from .plan import DISCLAIMER_EN
 from .schemas import ExtractionDraft, PlanDraft
 
 
-def _med(name, dose, route, freq, dur, purpose, instr, status, quote):
+def _med(name, dose, route, freq, dur, purpose, instr, status, quote, previous_dose=None):
     return dict(name=name, dose=dose, route=route, frequency=freq, duration=dur, purpose=purpose,
-                instructions=instr, status=status, source_quote=quote)
+                instructions=instr, status=status, source_quote=quote, previous_dose=previous_dose)
 
 
-def _fu(what, who, when, quote):
-    return dict(what=what, with_whom=who, when=when, source_quote=quote)
+def _fu(what, who, when, quote, contact=None):
+    return dict(what=what, with_whom=who, when=when, source_quote=quote, contact=contact)
 
 
 def _ws(symptom, action, quote):
@@ -40,8 +40,8 @@ HEART = dict(
              "do not crush or chew; do not stop suddenly", "new",
              "Metoprolol succinate ER 25 mg tablet - take 1 tablet by mouth once daily"),
         _med("Lisinopril", "10 mg", "oral", "once daily", None, None,
-             "dose lowered from 20 mg because of a kidney blood test", "changed",
-             "Lisinopril: DECREASE from 20 mg to 10 mg once daily"),
+             "dose lowered because of a kidney blood test", "changed",
+             "Lisinopril: DECREASE from 20 mg to 10 mg once daily", previous_dose="20 mg"),
         _med("Atorvastatin", "40 mg", "oral", "1 tablet at bedtime", None, None, None, "continue",
              "Atorvastatin 40 mg - 1 tablet at bedtime"),
         # Planted problem 1: frequency missing -> needs the patient's check.
@@ -56,7 +56,8 @@ HEART = dict(
              "Potassium chloride 20 mEq tablet - 1 tablet daily"),
     ],
     follow_ups=[
-        _fu("Cardiology clinic visit", "Dr. Okafor", "within 7 days", "Cardiology clinic (Dr. Okafor): within 7 days."),
+        _fu("Cardiology clinic visit", "Dr. Okafor", "within 7 days", "Cardiology clinic (Dr. Okafor): within 7 days.",
+            contact="555-0142"),
         _fu("Blood test (kidney function and potassium)", None, "in 1 week, before your clinic visit",
             "Blood test (kidney function and potassium): in 1 week"),
         _fu("Primary care visit", "Dr. Hale", "within 2 weeks", "Primary care (Dr. Hale): within 2 weeks."),
@@ -73,8 +74,10 @@ HEART = dict(
     restrictions=[
         _rs("diet", "Limit sodium (salt) to 2,000 mg per day; do not add salt to food", "Limit sodium (salt) to 2,000 mg per day"),
         _rs("diet", "Limit fluids to 1.5 liters (about 6 cups) per day", "Limit fluids to 1.5 liters (about 6 cups) per day"),
-        _rs("other", "Weigh yourself every morning after using the bathroom and before eating, and write it down",
+        _rs("monitoring", "Weigh yourself every morning after using the bathroom and before eating, and write it down",
             "Weigh yourself every morning after using the bathroom and before eating"),
+        _rs("medication_limit", "For pain you may use acetaminophen (Tylenol), no more than 3,000 mg in one day",
+            "For pain you may use acetaminophen (Tylenol), no more than 3,000 mg in one day."),
         _rs("activity", "Walk for short periods as you feel able; rest if short of breath",
             "Walk for short periods as you feel able"),
     ],
@@ -84,10 +87,10 @@ HEART = dict(
 PNEUMONIA = dict(
     diagnosis_summary="Community-acquired pneumonia (infection in the right lung).",
     medications=[
-        _med("Amoxicillin-clavulanate", "875/125 mg", "oral", "twice a day with meals", "4 more days (last dose evening of 10/19)",
+        _med("Amoxicillin-clavulanate", "875/125 mg", "oral", "twice a day with meals", "4 more days (last dose on the evening of 10/19)",
              None, "finish ALL tablets even if you feel better", "new",
-             "Amoxicillin-clavulanate (Augmentin) 875/125 mg: 1 tablet by mouth twice a day with meals"),
-        _med("Prednisone", "40 mg for 2 days, then 20 mg for 2 days", "oral", "daily", "4 days, then stop", None,
+             "Amoxicillin-clavulanate (Augmentin) 875/125 mg: 1 tablet by mouth twice a day with meals for 4 more days (last dose on the evening of 10/19)."),
+        _med("Prednisone", "40 mg for 2 days, then 20 mg for 2 days", "oral", "daily", None, None,
              "take in the morning with food; can raise blood sugar", "new",
              "Prednisone taper: 40 mg daily for 2 days, then 20 mg daily for 2 days, then stop."),
         _med("Guaifenesin", "600 mg", "oral", "every 12 hours as needed for cough/chest congestion", None, None, None, "new",
@@ -261,14 +264,17 @@ class DemoPlanClient:
                 bits = [m["dose"], _ROUTE_PLAIN.get(m["route"]), m["frequency"], f"for {m['duration']}" if m["duration"] else None]
                 how = "Take " + " ".join(b for b in bits if b) + "."
                 if m["status"] == "changed":
-                    how = "Your dose changed. " + how
+                    how = "Your dose changed" + (f" from {m['previous_dose']}" if m.get("previous_dose") else "") + ". " + how
             if m["instructions"]:
                 how += f" {m['instructions'][0].upper()}{m['instructions'][1:]}."
             why = m["purpose"] or next((v for k, v in _GENERIC_WHY.items() if k in m["name"].lower()), None)
             return dict(id=m["id"], how_to_take=note + how, why_taking=why)
 
         def fu(f):
-            return dict(id=f["id"], plain_text=note + " ".join(p for p in [f["what"], f"with {f['with_whom']}" if f["with_whom"] else None, f["when"]] if p) + ".")
+            text = " ".join(p for p in [f["what"], f"with {f['with_whom']}" if f["with_whom"] else None, f["when"]] if p) + "."
+            if f.get("contact"):
+                text += f" Call {f['contact']} to book."
+            return dict(id=f["id"], plain_text=note + text)
 
         def ws(w):
             return dict(id=w["id"], plain_text=note + f"{w['action']} if you have: {w['symptom']}.")

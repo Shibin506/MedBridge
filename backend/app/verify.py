@@ -30,6 +30,13 @@ def normalize(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
+_DIGITS = re.compile(r"\d+")
+
+
+def _numbers(text: str | None) -> list[str]:
+    return _DIGITS.findall(text or "")
+
+
 def quote_in_source(quote: str, source_norm: str) -> bool:
     q = normalize(quote)
     return len(q) >= 8 and q in source_norm  # tiny quotes prove nothing
@@ -55,9 +62,24 @@ def verify(draft: ExtractionDraft, source_text: str) -> ExtractionResult:
             issues.append("The drug name does not appear in its supporting quote.")
         if m.status != "stop" and (m.dose is None or m.frequency is None):
             issues.append("Dose or frequency is missing; check the paper.")
+        # Every number in the dose / schedule must be in the quote that "proves" it. This catches an AI that
+        # writes 400 mg when the paper says 40 mg, which the quote check alone would not.
+        quote_numbers = set(_numbers(m.source_quote))
+        for label, value in (("dose", m.dose), ("how often", m.frequency), ("duration", m.duration),
+                             ("previous dose", m.previous_dose)):
+            missing = [n for n in dict.fromkeys(_numbers(value)) if n not in quote_numbers]
+            if missing:
+                issues.append(f"The number {', '.join(missing)} in the {label} is not in the supporting quote. "
+                              "Check it against your paper.")
         meds.append(Medication(**m.model_dump(), grounded=grounded, needs_confirmation=bool(issues), issues=issues))
 
-    follow_ups = _wrap(draft.follow_ups, FollowUp, src)
+    doc_digits = re.sub(r"\D", "", source_text)
+
+    def contact_issue(f) -> list[str]:
+        digits = re.sub(r"\D", "", f.contact or "")
+        return [] if not digits or digits in doc_digits else ["The phone number was not found in the document. Check it."]
+
+    follow_ups = _wrap(draft.follow_ups, FollowUp, src, contact_issue)
     warnings = _wrap(draft.warning_signs, WarningSign, src)
     restrictions = _wrap(draft.restrictions, Restriction, src)
 
@@ -74,9 +96,11 @@ def verify(draft: ExtractionDraft, source_text: str) -> ExtractionResult:
     )
 
 
-def _wrap(items, model, src: str):
+def _wrap(items, model, src: str, extra=None):
     out = []
     for item in items:
         grounded, issues = _check(item.source_quote, src)
+        if extra:
+            issues = issues + extra(item)
         out.append(model(**item.model_dump(), grounded=grounded, needs_confirmation=bool(issues), issues=issues))
     return out

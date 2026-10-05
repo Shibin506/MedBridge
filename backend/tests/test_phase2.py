@@ -9,7 +9,7 @@ from app.extractor import Extractor
 from app.main import app
 from app.plan import PlanError, PlanGenerator, build_plan_input, check_plan, readiness_problems
 from app.schemas import PlanDraft, PlanRequest
-from conftest import SAMPLES
+from conftest import SAMPLES, draft_for_heart_failure
 
 
 def extract_sample(name: str):
@@ -72,14 +72,14 @@ def test_gate_blocks_until_flagged_items_confirmed_and_notes_acknowledged():
     for m in ex.medications:
         if m.needs_confirmation:
             m.patient_confirmed = True
-    assert len(readiness_problems(PlanRequest(extraction=ex))) == 1  # only the unclear-notes tick left
-    assert readiness_problems(PlanRequest(extraction=ex, acknowledged_unclear=True)) == []
+    assert len(readiness_problems(PlanRequest(extraction=ex, acknowledged_review=True))) == 1  # only the unclear-notes tick left
+    assert readiness_problems(PlanRequest(extraction=ex, acknowledged_unclear=True, acknowledged_review=True)) == []
 
 
 def test_gate_rejects_empty_plan_and_unknown_language():
     ex = extract_sample("01_heart_failure.txt")
     ex.medications, ex.follow_ups, ex.warning_signs, ex.restrictions = [], [], [], []
-    assert any("nothing to build" in p for p in readiness_problems(PlanRequest(extraction=ex, acknowledged_unclear=True)))
+    assert any("nothing to build" in p for p in readiness_problems(PlanRequest(extraction=ex, acknowledged_unclear=True, acknowledged_review=True)))
     ex2 = confirm_everything(extract_sample("03_hip_replacement.txt"))
     assert any("Unsupported language" in p for p in readiness_problems(PlanRequest(extraction=ex2, language="xx")))
 
@@ -197,14 +197,14 @@ def test_full_flow_extract_confirm_plan(demo_client):
         for item in ex[group]:
             if item["needs_confirmation"]:
                 item["patient_confirmed"] = True
-    r = demo_client.post("/plan", json={"extraction": ex, "acknowledged_unclear": True})
+    r = demo_client.post("/plan", json={"extraction": ex, "acknowledged_unclear": True, "acknowledged_review": True})
     assert r.status_code == 200, r.text
     plan = r.json()
     assert plan["language"] == "en" and len(plan["medications"]) == 8
     assert any(w["emergency"] for w in plan["warning_signs"])
 
     # 3) another language
-    r = demo_client.post("/plan", json={"extraction": ex, "acknowledged_unclear": True, "language": "es"})
+    r = demo_client.post("/plan", json={"extraction": ex, "acknowledged_unclear": True, "acknowledged_review": True, "language": "es"})
     assert r.json()["language_name"] == "Spanish"
 
 
@@ -265,3 +265,91 @@ def test_schedule_note_reads_naturally_after_cleaning():
     m = Medication(name="Apixaban", dose="2.5 mg", route="oral", frequency="twice daily", duration="for 35 days after surgery",
                    purpose=None, instructions=None, status="new", source_quote="x", grounded=True, needs_confirmation=False)
     assert build_schedule([m]).slots[0].items[0].note == "for 35 days after surgery"
+
+
+# ---------- review round: numbers, phone numbers, old dose, new categories, review gate ----------
+def heart_draft_with(**changes):
+    d = draft_for_heart_failure()
+    for key, value in changes.items():
+        setattr(d.medications[0], key, value)
+    return d
+
+
+def test_a_wrong_dose_number_is_flagged_even_though_the_quote_exists(heart_text):
+    from app.verify import verify
+    r = verify(heart_draft_with(dose="400 mg"), heart_text)  # the paper says 40 mg
+    furosemide = r.medications[0]
+    assert furosemide.grounded is True  # the quote is real...
+    assert furosemide.needs_confirmation is True  # ...but the number is not
+    assert "number 400 in the dose" in furosemide.issues[0]
+
+
+def test_wrong_frequency_or_duration_numbers_are_flagged_and_right_ones_are_not(heart_text):
+    from app.verify import verify
+    assert verify(heart_draft_with(frequency="every 8 hours"), heart_text).medications[0].needs_confirmation
+    assert verify(heart_draft_with(duration="35 days"), heart_text).medications[0].needs_confirmation
+    ok = verify(heart_draft_with(), heart_text).medications[0]
+    assert ok.needs_confirmation is False and ok.issues == []
+
+
+def test_phone_numbers_must_really_be_in_the_document(heart_text):
+    from app.verify import verify
+    d = draft_for_heart_failure()
+    d.follow_ups[0].contact = "555-0142"
+    assert verify(d, heart_text).follow_ups[0].needs_confirmation is False
+    d.follow_ups[0].contact = "555-9999"
+    r = verify(d, heart_text).follow_ups[0]
+    assert r.needs_confirmation and "phone number was not found" in r.issues[0]
+
+
+def test_medicine_names_start_with_a_capital_letter():
+    from app.schemas import MedicationDraft
+    m = MedicationDraft(name="  naproxen (Aleve)", dose=None, route=None, frequency=None, duration=None, purpose=None,
+                        instructions=None, status="stop", source_quote="naproxen (Aleve)")
+    assert m.name == "Naproxen (Aleve)"
+
+
+def test_heart_demo_captures_old_dose_phone_and_the_acetaminophen_limit():
+    ex = extract_sample("01_heart_failure.txt")
+    lis = next(m for m in ex.medications if m.name == "Lisinopril")
+    assert lis.previous_dose == "20 mg" and not lis.needs_confirmation
+    assert ex.follow_ups[0].contact == "555-0142" and not ex.follow_ups[0].needs_confirmation
+    cats = {r.category: r.instruction for r in ex.restrictions}
+    assert "3,000 mg" in cats["medication_limit"] and "Weigh yourself" in cats["monitoring"]
+
+
+def test_plan_must_keep_the_old_dose_and_the_phone_number():
+    ex = confirm_everything(extract_sample("01_heart_failure.txt"))
+    draft = good_draft(ex)
+    assert check_plan(draft, ex) == []
+    lis_idx = next(n for n, m in enumerate(ex.medications) if m.name == "Lisinopril")
+    assert "from 20 mg" in draft.medications[lis_idx].how_to_take and "555-0142" in draft.follow_ups[0].plain_text
+    # the model drops the old dose / the phone number -> caught
+    draft.medications[lis_idx].how_to_take = "Take 10 mg once daily."
+    draft.follow_ups[0].plain_text = "See the heart doctor within 7 days."
+    problems = check_plan(draft, ex)
+    assert any(f"med_{lis_idx}" in p and "20" in p for p in problems)
+    assert any("fu_0" in p and "contact" in p for p in problems)
+
+
+def test_the_review_box_can_never_be_skipped():
+    ex = confirm_everything(extract_sample("03_hip_replacement.txt"))
+    assert any("compared this list" in p for p in readiness_problems(PlanRequest(extraction=ex)))
+    assert readiness_problems(PlanRequest(extraction=ex, acknowledged_review=True)) == []
+
+
+def test_nothing_flagged_still_requires_the_patient_to_confirm_the_review(demo_client=None):
+    from app.main import app
+    from fastapi.testclient import TestClient
+    import os
+    os.environ["MEDBRIDGE_DEMO"] = "1"
+    try:
+        c = TestClient(app)
+        text = (SAMPLES / "03_hip_replacement.txt").read_bytes()
+        ex = c.post("/extract", files={"file": ("a.txt", text, "text/plain")}).json()
+        assert ex["items_needing_confirmation"] == 0  # nothing flagged...
+        r = c.post("/plan", json={"extraction": ex})  # ...yet the server still refuses without the review box
+        assert r.status_code == 409 and "compared this list" in r.text
+        assert c.post("/plan", json={"extraction": ex, "acknowledged_review": True}).status_code == 200
+    finally:
+        os.environ.pop("MEDBRIDGE_DEMO", None)

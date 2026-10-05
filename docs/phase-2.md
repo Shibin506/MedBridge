@@ -70,6 +70,18 @@ two planted problems on purpose: a **made-up medicine** (the checker flags it as
 
 - The buttons and headings in the UI are English only; the plan text itself is translated. Machine translation of
   medical text has not been reviewed by native speakers: the plan always shows the English "From your paper" original.
-- The patient cannot add an item that was missed (only confirm, edit or remove).
 - Nothing is saved yet: refresh the page and you start over (storage arrives with SMS in Phase 4).
 - Real-model quality (how often the retry triggers, translation quality) is untested until you run it with a key.
+
+## Review round after the first live run (what a real AI run taught us)
+
+The first run on the heart-failure paper showed what the AI gets wrong, so these were added:
+
+| Problem seen | Fix |
+|---|---|
+| "For pain you may use acetaminophen, no more than 3,000 mg in one day" was dropped | Prompt now asks for permissions/limits (category `medication_limit`); patient can also **add anything the AI missed** (marked "Added by you") |
+| Phone number ("Call 555-0142") dropped | New `contact` field; code checks the number really is in the paper; the plan must repeat it |
+| Lisinopril "10 mg" lost "was 20 mg" | New `previous_dose` field; the plan must mention the old dose |
+| A wrong number (400 mg for 40 mg) would still show "Found in your paper" | **Number check:** every number in dose / how often / duration must be in the supporting quote, else the item is flagged |
+| "Everything has been checked" was false reassurance | Honest wording, and a **review box that is always required** (the server refuses a plan without it, even when nothing is flagged) |
+| "for for 35 days", "naproxen" lowercase, daily weighing filed under "other" | duration cleaned in the data model, names capitalised, new `monitoring` category |

@@ -193,7 +193,7 @@ def confirmed_body(client, name):
     for g in ("medications", "follow_ups", "warning_signs", "restrictions"):
         for i in ex[g]:
             i["patient_confirmed"] = True
-    return {"extraction": ex, "acknowledged_unclear": True}
+    return {"extraction": ex, "acknowledged_unclear": True, "acknowledged_review": True}
 
 
 def test_schedule_and_safety_are_gated_like_the_plan(demo):

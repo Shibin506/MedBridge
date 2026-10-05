@@ -56,6 +56,8 @@ Hard rules:
   (e.g. oral -> "by mouth", subcutaneous -> "as an injection under the skin").
 - Write every number as digits (0-9), exactly as in the data (e.g. "40 mg", "every 4-6 hours").
 - Keep drug names exactly as written in the data; do not translate or respell them.
+- If a medicine has previous_dose, say the dose changed and give both the old and the new dose.
+- If a follow-up has contact (a phone number), include it exactly as given.
 - Emergency items (anything saying to call 911) must keep their urgency and must include "911".
 - Return exactly one entry for every id you were given, using the same ids. Do not add or drop ids.
 - For why_taking: use the item's 'purpose' if it has one. If not, you may add ONE general sentence about
@@ -85,6 +87,8 @@ def readiness_problems(req: PlanRequest) -> list[str]:
     unchecked = [i for i in items if i.needs_confirmation and not i.patient_confirmed]
     if unchecked:
         problems.append(f"{len(unchecked)} item(s) still need your check before we can make your plan.")
+    if not req.acknowledged_review:
+        problems.append("Please tick the box to say you compared this list with your paper.")
     if ex.unclear_items and not req.acknowledged_unclear:
         problems.append("Please read the 'please check with your care team' notes and tick that you have seen them.")
     return problems
@@ -97,11 +101,11 @@ def build_plan_input(ex: ExtractionResult) -> dict[str, Any]:
     return {
         "diagnosis_summary": ex.diagnosis_summary,
         "medications": [
-            {"id": f"med_{n}", **m.model_dump(include={"name", "dose", "route", "frequency", "duration", "purpose", "instructions", "status"})}
+            {"id": f"med_{n}", **m.model_dump(include={"name", "dose", "previous_dose", "route", "frequency", "duration", "purpose", "instructions", "status"})}
             for n, m in enumerate(ex.medications)
         ],
         "follow_ups": [
-            {"id": f"fu_{n}", **f.model_dump(include={"what", "with_whom", "when"})} for n, f in enumerate(ex.follow_ups)
+            {"id": f"fu_{n}", **f.model_dump(include={"what", "with_whom", "when", "contact"})} for n, f in enumerate(ex.follow_ups)
         ],
         "warning_signs": [
             {"id": f"ws_{n}", **w.model_dump(include={"symptom", "action"})} for n, w in enumerate(ex.warning_signs)
@@ -140,11 +144,19 @@ def check_plan(draft: PlanDraft, ex: ExtractionResult) -> list[str]:
             continue
         if not out.how_to_take.strip():
             problems.append(f"med_{n} ({med.name}): how_to_take is empty.")
-        wanted = [*_numbers(med.dose), *_numbers(med.frequency), *_numbers(med.duration)]
+        wanted = [*_numbers(med.dose), *_numbers(med.frequency), *_numbers(med.duration), *_numbers(med.previous_dose)]
         digits_in_text = set(_numbers(out.how_to_take))
         missing = [d for d in wanted if d not in digits_in_text]
         if missing and med.status != "stop":
             problems.append(f"med_{n} ({med.name}): how_to_take must contain the numbers {missing} from the data.")
+
+    fu_text = {e.id: e for e in draft.follow_ups}
+    for n, f in enumerate(ex.follow_ups):
+        out = fu_text.get(f"fu_{n}")
+        if out is not None and f.contact:
+            missing = [d for d in _numbers(f.contact) if d not in set(_numbers(out.plain_text))]
+            if missing:
+                problems.append(f"fu_{n}: the plain text must include the contact details exactly as given ({f.contact}).")
 
     by_id_ws = {w.id: w for w in draft.warning_signs}
     for n, w in enumerate(ex.warning_signs):

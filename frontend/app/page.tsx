@@ -6,7 +6,7 @@ import UploadStep from "@/components/UploadStep";
 import { getConfig, getSafety, getSchedule, makePlan } from "@/lib/api";
 import type { AppConfig, Extras, ExtractionResult, PatientPlan } from "@/lib/types";
 
-type Opts = { language: string; reading_level: string; acknowledged_unclear: boolean };
+type Opts = { language: string; reading_level: string; acknowledged_unclear: boolean; acknowledged_review: boolean };
 
 export default function Home() {
   const [config, setConfig] = useState<AppConfig>({ demo: false, languages: { en: "English" } });

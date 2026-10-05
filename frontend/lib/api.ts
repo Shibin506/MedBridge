@@ -25,6 +25,7 @@ export function extract(file: File): Promise<ExtractionResult> {
 
 export interface PlanBody {
   extraction: ExtractionResult; language: string; reading_level: string; acknowledged_unclear: boolean;
+  acknowledged_review: boolean;
 }
 
 const post = <T,>(path: string, body: PlanBody) =>
