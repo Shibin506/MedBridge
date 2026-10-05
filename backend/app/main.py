@@ -1,3 +1,4 @@
+import logging
 import os
 from pathlib import Path
 
@@ -16,18 +17,22 @@ from .schemas import DailySchedule, ExtractionResult, PatientPlan, PlanRequest, 
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 SAMPLES_DIR = Path(__file__).resolve().parent.parent / "samples"
 
+log = logging.getLogger("uvicorn.error")  # shows up in the same terminal as the server
+
 app = FastAPI(title="MedBridge API", version="0.2.0")
 
 
 @app.exception_handler(LLMUnavailable)
-def _ai_busy(_: Request, exc: LLMUnavailable) -> JSONResponse:
+def _ai_busy(request: Request, exc: LLMUnavailable) -> JSONResponse:
+    log.warning("AI service unavailable on %s: %s", request.url.path, exc)
     return JSONResponse(status_code=503, content={
         "detail": "The AI service is busy or could not be reached (the free Gemini tier has limits). "
                   "Please wait a minute and try again."})
 
 
 @app.exception_handler(LLMError)
-def _ai_error(_: Request, exc: LLMError) -> JSONResponse:
+def _ai_error(request: Request, exc: LLMError) -> JSONResponse:
+    log.warning("AI error on %s: %s", request.url.path, exc)  # messages never contain your key
     return JSONResponse(status_code=502, content={"detail": str(exc)})
 
 

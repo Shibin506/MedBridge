@@ -18,6 +18,8 @@ import os
 from types import SimpleNamespace
 from typing import Any
 
+from pydantic import ValidationError
+
 GEMINI_DEFAULT_MODEL = "gemini-2.5-flash"
 ANTHROPIC_DEFAULT_MODEL = "claude-opus-5-5"
 FALLBACK_MODEL = GEMINI_DEFAULT_MODEL
@@ -72,6 +74,8 @@ class GeminiClient:
             response_mime_type="application/json",
             response_schema=output_format,  # a Pydantic model class: Gemini must answer in exactly this shape
             max_output_tokens=max_tokens,
+            # We never use tool calling; this also silences a noisy (harmless) library warning.
+            automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
         )
         try:
             response = self.client.models.generate_content(model=model, contents=contents, config=config)
@@ -84,15 +88,25 @@ class GeminiClient:
             raise LLMUnavailable(f"Could not reach Gemini: {exc}") from exc
 
         parsed = getattr(response, "parsed", None)
+        problem = None
         if not isinstance(parsed, output_format):
-            try:
-                parsed = output_format.model_validate_json(getattr(response, "text", None) or "")
-            except Exception:
-                parsed = None
+            parsed = None
+            text = getattr(response, "text", None) or ""
+            if not text.strip():
+                problem = "empty answer"
+            else:
+                try:
+                    parsed = output_format.model_validate_json(text)
+                except ValidationError as exc:
+                    # Where it went wrong, never the content (it could contain patient details).
+                    bad = sorted({".".join(str(p) for p in e["loc"][:3]) + f" ({e['type']})" for e in exc.errors(include_input=False)})
+                    problem = "answer did not match the expected shape: " + "; ".join(bad[:4])
+                except Exception:
+                    problem = "answer was not valid JSON"
         finish = None
         if getattr(response, "candidates", None):
             finish = str(getattr(response.candidates[0], "finish_reason", None))
-        return SimpleNamespace(parsed_output=parsed, stop_reason=finish)
+        return SimpleNamespace(parsed_output=parsed, stop_reason="; ".join(x for x in (finish, problem) if x) or None)
 
 
 class AnthropicClient:
