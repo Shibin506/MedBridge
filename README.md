@@ -19,7 +19,18 @@ when something looks wrong.
 | 5 | Caregiver/nurse dashboard, adherence timeline | |
 | 6 | Polish, demo video | |
 
-## Run it (no API key needed: demo mode)
+## Quickest way (no API key needed: demo mode)
+
+Needs Python 3.10+ and Node.js 20+.
+
+```bash
+git clone https://github.com/Shibin506/MedBridge && cd MedBridge
+./scripts/run-demo.sh
+```
+
+Then open http://localhost:3000. Press Ctrl+C to stop. The first run takes a couple of minutes to install things.
+
+## Run it step by step (no API key needed: demo mode)
 
 ```bash
 # terminal 1: backend
