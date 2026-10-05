@@ -20,6 +20,9 @@ timing or purpose; use null instead.
 - Keep every "until ..." condition. A medicine to stop "until your surgeon says it is safe" must say so in duration.
 - Do not drop permissions ("you may shower after 48 hours", "you may use acetaminophen") or limits. Make one
   restriction item per instruction sentence instead of merging or skipping sentences.
+- Set route only when the paper says how it is taken ("by mouth", "inhaled", "injection") or the form makes it obvious
+  ("tablet", "capsule" = oral). Otherwise leave it null.
+- Showering, bathing, dressings and stitches are wound_care instructions.
 - If a medicine's dose changed, put the OLD dose in previous_dose.
 - Put a follow-up's phone number into its contact field as the number only, exactly as written (for example
   "555-0142", not "Call 555-0142 to schedule").
