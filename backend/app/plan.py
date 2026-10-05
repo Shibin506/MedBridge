@@ -9,13 +9,11 @@ Same pattern as Phase 1: the LLM writes the friendly words, plain code owns ever
 """
 
 import json
-import os
 import re
 from typing import Any
 
-import anthropic
 
-from .extractor import DEFAULT_MODEL
+from .llm import make_client, model_for
 from .schemas import (
     ExtractionResult,
     PatientPlan,
@@ -218,13 +216,17 @@ def assemble(draft: PlanDraft, req: PlanRequest) -> PatientPlan:
 class PlanGenerator:
     def __init__(self, client: Any | None = None, model: str | None = None):
         self._client = client  # injectable, like Extractor, so tests never hit the network
-        self.model = model or os.environ.get("MEDBRIDGE_MODEL", DEFAULT_MODEL)
+        self._model = model
 
     @property
     def client(self) -> Any:
         if self._client is None:
-            self._client = anthropic.Anthropic()
+            self._client = make_client()
         return self._client
+
+    @property
+    def model(self) -> str:
+        return model_for(self.client, self._model)
 
     def _ask(self, req: PlanRequest, feedback: list[str] | None) -> PlanDraft:
         content = (

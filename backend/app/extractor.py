@@ -1,14 +1,10 @@
 """LLM extraction: discharge text -> ExtractionDraft -> verified ExtractionResult."""
 
-import os
 from typing import Any
 
-import anthropic
-
+from .llm import LLMError, make_client, model_for
 from .schemas import ExtractionDraft, ExtractionResult
 from .verify import verify
-
-DEFAULT_MODEL = "claude-opus-5-5"
 
 SYSTEM_PROMPT = """\
 You extract structured data from hospital discharge instructions for a patient-education tool.
@@ -30,13 +26,17 @@ class Extractor:
     def __init__(self, client: Any | None = None, model: str | None = None):
         # The client is injectable so tests can pass a fake and never call the network.
         self._client = client
-        self.model = model or os.environ.get("MEDBRIDGE_MODEL", DEFAULT_MODEL)
+        self._model = model
 
     @property
     def client(self) -> Any:
         if self._client is None:
-            self._client = anthropic.Anthropic()  # reads ANTHROPIC_API_KEY from the environment
+            self._client = make_client()  # Gemini or Claude, depending on which key is set (see llm.py)
         return self._client
+
+    @property
+    def model(self) -> str:
+        return model_for(self.client, self._model)
 
     def extract_draft(self, document_text: str) -> ExtractionDraft:
         response = self.client.messages.parse(
@@ -53,7 +53,7 @@ class Extractor:
         )
         draft = response.parsed_output
         if draft is None:
-            raise RuntimeError(f"Model returned no structured output (stop_reason={response.stop_reason}).")
+            raise LLMError(f"The AI returned no usable structured answer (stop reason: {response.stop_reason}).")
         return draft
 
     def extract(self, document_text: str) -> ExtractionResult:

@@ -49,13 +49,15 @@ npm run build && npm run start           # or: npm run dev   ->  http://localhos
 Open http://localhost:3000 and click one of the fictional examples. Demo mode answers from pre-written
 data, so it also works as a hackathon fallback if the Wi-Fi or the API fails.
 
-## Run it for real
+## Run it with the real AI (free Gemini key)
 
-```bash
-export ANTHROPIC_API_KEY=...             # never commit this
-uvicorn app.main:app --port 8000         # without MEDBRIDGE_DEMO
-python scripts/try_extract.py samples/01_heart_failure.txt   # extraction only, prints a report
-```
+1. Get a free key at https://aistudio.google.com/apikey
+2. In the project folder: `cp .env.example .env`, open `.env`, paste the key after `GEMINI_API_KEY=`
+3. `./scripts/run-demo.sh --live`
+
+Details, Twilio setup and privacy notes: [docs/setup-keys.md](docs/setup-keys.md).
+**Free-tier AI services may use what you send to improve their products. Only use the fictional sample
+documents until you have a paid/private setup.**
 
 ## How it works
 

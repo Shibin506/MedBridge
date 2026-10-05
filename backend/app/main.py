@@ -1,11 +1,13 @@
 import os
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile
+from fastapi.responses import JSONResponse
 
 from .demo import DemoExtractionClient, DemoLabelSource, DemoPlanClient
 from .documents import UnreadableDocument, load_document
 from .extractor import Extractor
+from .llm import LLMError, LLMUnavailable
 from .plan import LANGUAGES, PlanError, PlanGenerator, readiness_problems
 from .safety import SafetyChecker, build_live_checker
 from .schedule import build_schedule
@@ -15,6 +17,18 @@ MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 SAMPLES_DIR = Path(__file__).resolve().parent.parent / "samples"
 
 app = FastAPI(title="MedBridge API", version="0.2.0")
+
+
+@app.exception_handler(LLMUnavailable)
+def _ai_busy(_: Request, exc: LLMUnavailable) -> JSONResponse:
+    return JSONResponse(status_code=503, content={
+        "detail": "The AI service is busy or could not be reached (the free Gemini tier has limits). "
+                  "Please wait a minute and try again."})
+
+
+@app.exception_handler(LLMError)
+def _ai_error(_: Request, exc: LLMError) -> JSONResponse:
+    return JSONResponse(status_code=502, content={"detail": str(exc)})
 
 
 def demo_mode() -> bool:
