@@ -6,7 +6,9 @@ from fastapi.testclient import TestClient
 from google.genai import errors
 
 from app.extractor import Extractor
-from app.llm import AnthropicClient, GeminiClient, LLMError, LLMUnavailable, make_client, model_for
+from app.llm import (
+    GEMINI_DEFAULT_MODEL, AnthropicClient, GeminiClient, LLMError, LLMUnavailable, make_client, model_for, pick_model,
+)
 from app.main import app, get_extractor
 from app.schemas import ExtractionDraft
 from conftest import SAMPLES, draft_for_heart_failure
@@ -127,7 +129,7 @@ def test_extractor_works_end_to_end_through_the_gemini_adapter():
     text = (SAMPLES / "01_heart_failure.txt").read_text(encoding="utf-8")
     fake = FakeGenAI(parsed=draft_for_heart_failure())
     result = Extractor(client=GeminiClient(client=fake)).extract(text)
-    assert fake.calls[0]["model"] == "gemini-2.5-flash"  # provider default
+    assert fake.calls[0]["model"] == GEMINI_DEFAULT_MODEL  # provider default
     assert result.items_needing_confirmation == 1  # the invented warfarin is still caught by our checker
 
 
@@ -169,7 +171,7 @@ def test_no_key_gives_a_helpful_message(clean_env):
 
 def test_model_choice_order(clean_env):
     gem = GeminiClient(api_key="x")
-    assert model_for(gem, None) == "gemini-2.5-flash"
+    assert model_for(gem, None) == GEMINI_DEFAULT_MODEL
     clean_env.setenv("MEDBRIDGE_MODEL", "gemini-custom")
     assert model_for(gem, None) == "gemini-custom"
     assert model_for(gem, "explicit") == "explicit"
@@ -192,3 +194,77 @@ def test_api_maps_ai_errors_to_clear_http_statuses(clean_env):
 
     r = TestClient(app).post("/extract", files=files)  # no key set, not demo mode
     assert r.status_code == 502 and "aistudio.google.com/apikey" in r.json()["detail"]
+
+
+# ---------- model names that stop existing ----------
+def M(name, actions=("generateContent",)):
+    return SimpleNamespace(name=f"models/{name}", supported_actions=list(actions))
+
+
+GOOGLE_MODELS = [
+    M("gemini-2.0-flash"), M("gemini-3-flash-preview"), M("gemini-3-flash"), M("gemini-3-flash-lite"),
+    M("gemini-3-pro"), M("gemini-3-flash-image"), M("gemini-3-flash-tts"), M("text-embedding-004", ("embedContent",)),
+    M("gemini-3-flash-live", ("bidiGenerateContent",)),
+]
+
+
+def test_pick_model_prefers_stable_full_newest_flash():
+    assert pick_model(GOOGLE_MODELS) == "gemini-3-flash"
+    # without it: full models beat "lite" ones, so the older full model wins over 3-flash-lite
+    assert pick_model(GOOGLE_MODELS, exclude="gemini-3-flash") == "gemini-2.0-flash"
+    assert pick_model(GOOGLE_MODELS, exclude="gemini-3-flash") != "gemini-3-flash"
+
+
+def test_pick_model_ignores_non_text_and_unusable_models():
+    assert pick_model([M("gemini-3-flash-image"), M("gemini-3-flash-tts"), M("gemini-3-pro")]) is None
+    assert pick_model([M("gemini-3-flash", ("embedContent",))]) is None
+    assert pick_model([]) is None
+
+
+class RetiredModelGenAI(FakeGenAI):
+    """Google says one model name does not exist; the list shows what does."""
+
+    def __init__(self, retired, **kw):
+        super().__init__(**kw)
+        self._retired = retired
+        self.models = SimpleNamespace(generate_content=self._gen, list=lambda: iter(GOOGLE_MODELS))
+
+    def _gen(self, **kwargs):
+        self.calls.append(kwargs)
+        if kwargs["model"] == self._retired:
+            raise errors.APIError(404, {"error": {"message": f"models/{self._retired} is not found"}})
+        return self._resp
+
+
+def _ask_model(client, model):
+    return client.messages.parse(model=model, max_tokens=10, system="s",
+                                 messages=[{"role": "user", "content": "d"}], output_format=ExtractionDraft)
+
+
+def test_retired_model_is_replaced_automatically_once(caplog):
+    import logging
+
+    fake = RetiredModelGenAI("gemini-old-flash", parsed=draft_for_heart_failure())
+    client = GeminiClient(client=fake)
+    with caplog.at_level(logging.WARNING, logger="uvicorn.error"):
+        out = _ask_model(client, "gemini-old-flash")
+    assert out.parsed_output is not None
+    assert [c["model"] for c in fake.calls] == ["gemini-old-flash", "gemini-3-flash"]
+    assert "MEDBRIDGE_MODEL=gemini-3-flash" in caplog.text
+    _ask_model(client, "gemini-old-flash")
+    assert fake.calls[-1]["model"] == "gemini-3-flash" and len(fake.calls) == 3  # remembered: no second 404
+
+
+def test_unknown_model_with_no_alternative_gives_the_plain_message():
+    fake = RetiredModelGenAI("gemini-old-flash", parsed=None)
+    fake.models.list = lambda: iter([])
+    with pytest.raises(LLMError) as e:
+        _ask_model(GeminiClient(client=fake), "gemini-old-flash")
+    assert "does not know that model" in str(e.value)
+
+
+def test_listing_models_failing_does_not_hide_the_real_error():
+    fake = RetiredModelGenAI("gemini-old-flash", parsed=None)
+    fake.models.list = lambda: (_ for _ in ()).throw(RuntimeError("list failed"))
+    with pytest.raises(LLMError):
+        _ask_model(GeminiClient(client=fake), "gemini-old-flash")

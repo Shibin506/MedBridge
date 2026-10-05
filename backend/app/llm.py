@@ -14,15 +14,21 @@ Choosing a provider (first match wins):
   ANTHROPIC_API_KEY set                    -> Claude
 """
 
+import logging
 import os
+import re
 from types import SimpleNamespace
 from typing import Any
 
 from pydantic import ValidationError
 
-GEMINI_DEFAULT_MODEL = "gemini-2.5-flash"
+# "-latest" is Google's moving alias for the newest Flash model, so a retired version name cannot break us.
+# If even that name is unknown, the client asks Google which models this key can use and picks one (see pick_model).
+GEMINI_DEFAULT_MODEL = "gemini-flash-latest"
 ANTHROPIC_DEFAULT_MODEL = "claude-opus-5-5"
 FALLBACK_MODEL = GEMINI_DEFAULT_MODEL
+
+log = logging.getLogger("uvicorn.error")
 
 NO_KEY_MESSAGE = (
     "No AI key found. Get a free Gemini key at https://aistudio.google.com/apikey, then put "
@@ -36,6 +42,26 @@ class LLMError(RuntimeError):
 
 class LLMUnavailable(LLMError):
     """The AI service is busy, rate-limited or unreachable. Trying again later may work."""
+
+
+_SKIP = ("image", "tts", "live", "audio", "embedding", "native", "robotics", "computer", "imagen", "veo", "learnlm")
+
+
+def pick_model(models: list, exclude: str | None = None) -> str | None:
+    """Choose the best general-purpose Flash model from Google's list: stable over preview, full over lite, newest first."""
+    best, best_key = None, None
+    for m in models:
+        short = (getattr(m, "name", "") or "").removeprefix("models/")
+        low = short.lower()
+        if short == exclude or "flash" not in low or any(x in low for x in _SKIP):
+            continue
+        if "generateContent" not in (getattr(m, "supported_actions", None) or []):
+            continue
+        version = re.search(r"(\d+(?:\.\d+)?)", low)
+        key = (not any(x in low for x in ("preview", "exp")), "lite" not in low, float(version.group(1)) if version else 0.0)
+        if best_key is None or key > best_key:
+            best, best_key = short, key
+    return best
 
 
 def _friendly(code: int | None, raw: str) -> str:
@@ -56,6 +82,7 @@ class GeminiClient:
         self._api_key = api_key
         self._vertex = vertex  # True for the other kind of Google key (Google Cloud "Vertex AI express mode", starts with AQ.)
         self._client = client  # injectable for tests
+        self._resolved: dict[str, str] = {}  # asked-for model -> model we switched to
         self.messages = SimpleNamespace(parse=self._parse)
 
     @property
@@ -65,6 +92,12 @@ class GeminiClient:
 
             self._client = genai.Client(vertexai=True, api_key=self._api_key) if self._vertex else genai.Client(api_key=self._api_key)
         return self._client
+
+    def _discover(self, current: str) -> str | None:
+        try:
+            return pick_model(list(self.client.models.list()), exclude=current)
+        except Exception:
+            return None
 
     def _parse(self, *, model: str, max_tokens: int, system: str, messages: list[dict], output_format: Any, **_ignored):
         from google.genai import errors, types
@@ -78,15 +111,24 @@ class GeminiClient:
             # We never use tool calling; this also silences a noisy (harmless) library warning.
             automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
         )
-        try:
-            response = self.client.models.generate_content(model=model, contents=contents, config=config)
-        except errors.APIError as exc:
-            code = getattr(exc, "code", None)
-            if code in (429, 500, 502, 503, 504):
-                raise LLMUnavailable(f"Gemini is busy or rate-limited (error {code}).") from exc
-            raise LLMError(_friendly(code, str(exc))) from exc
-        except Exception as exc:  # network trouble, timeouts, DNS
-            raise LLMUnavailable(f"Could not reach Gemini: {exc}") from exc
+        current = self._resolved.get(model, model)
+        for attempt in range(2):
+            try:
+                response = self.client.models.generate_content(model=current, contents=contents, config=config)
+                break
+            except errors.APIError as exc:
+                code = getattr(exc, "code", None)
+                if code == 404 and attempt == 0 and (alt := self._discover(current)):
+                    # The model name is retired or unknown: use one this key can really use, once.
+                    log.warning("Gemini model %s is not available; switching to %s. Set MEDBRIDGE_MODEL=%s to make it permanent.",
+                                current, alt, alt)
+                    self._resolved[model] = current = alt
+                    continue
+                if code in (429, 500, 502, 503, 504):
+                    raise LLMUnavailable(f"Gemini is busy or rate-limited (error {code}).") from exc
+                raise LLMError(_friendly(code, str(exc))) from exc
+            except Exception as exc:  # network trouble, timeouts, DNS
+                raise LLMUnavailable(f"Could not reach Gemini: {exc}") from exc
 
         parsed = getattr(response, "parsed", None)
         problem = None

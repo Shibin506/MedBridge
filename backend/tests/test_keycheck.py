@@ -54,3 +54,8 @@ def test_key_that_lost_its_prefix_gets_the_double_click_hint():
 def test_correctly_prefixed_keys_do_not_get_the_hint():
     assert "Double-clicking" not in text("AQ.Zz9Q" + "x" * 46, A(code=400), A(code=401))
     assert "Double-clicking" not in text("AIza" + "x" * 35, A(code=400), A(code=401))
+
+
+def test_pass_with_a_replaced_model_tells_user_the_permanent_fix():
+    out = text("AIza" + "x" * 35, Attempt("x", True, model_used="gemini-3-flash"), A())
+    assert "PASS" in out and "MEDBRIDGE_MODEL=gemini-3-flash" in out

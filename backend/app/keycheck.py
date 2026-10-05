@@ -3,7 +3,7 @@
 import os
 from dataclasses import dataclass
 
-from .llm import GEMINI_DEFAULT_MODEL
+from .llm import GEMINI_DEFAULT_MODEL, GeminiClient
 
 
 @dataclass
@@ -12,13 +12,18 @@ class Attempt:
     ok: bool
     code: int | None = None
     note: str = ""  # short reason, key removed
+    model_used: str | None = None  # set when the asked-for model did not exist and another one worked
 
 
 def advise(key: str, studio: Attempt, vertex: Attempt) -> list[str]:
     """Plain-English next steps from the two test results."""
     shape = f"Your key starts with “{key[:4]}” and is {len(key)} characters long."
     if studio.ok:
-        return [shape, "PASS: Google AI Studio accepted the key.", "Nothing to change. Run ./scripts/run-demo.sh --live."]
+        lines = [shape, "PASS: Google AI Studio accepted the key."]
+        if studio.model_used:
+            lines += [f"Note: the model name we asked for does not exist for your key; “{studio.model_used}” works.",
+                      f"The app switches to it by itself. To make it permanent, add this line to .env:  MEDBRIDGE_MODEL={studio.model_used}"]
+        return lines + ["Nothing else to change. Run ./scripts/run-demo.sh --live."]
     if studio.code == 429:
         return [shape, "The key is VALID but its free limit is used up right now.", "Wait a minute (or until tomorrow) and try again."]
     if vertex.ok or vertex.code == 429:
@@ -56,11 +61,17 @@ def _try(name: str, key: str, model: str, vertex: bool) -> Attempt:
 
     try:
         client = genai.Client(vertexai=True, api_key=key) if vertex else genai.Client(api_key=key)
-        client.models.generate_content(
-            model=model, contents="Reply with the single word OK.",
-            config=types.GenerateContentConfig(automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True)),
-        )
-        return Attempt(name, True)
+        cfg = types.GenerateContentConfig(automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True))
+        try:
+            client.models.generate_content(model=model, contents="Reply with the single word OK.", config=cfg)
+            return Attempt(name, True)
+        except errors.APIError as exc:
+            # The key was accepted but the model name is unknown (retired?): find one this key can use.
+            alt = GeminiClient(api_key=key, client=client)._discover(model) if getattr(exc, "code", None) == 404 else None
+            if not alt:
+                raise
+            client.models.generate_content(model=alt, contents="Reply with the single word OK.", config=cfg)
+            return Attempt(name, True, model_used=alt)
     except errors.APIError as exc:
         text = str(getattr(exc, "message", "") or exc).replace(key, "<key>")
         return Attempt(name, False, getattr(exc, "code", None), " ".join(text.split())[:140])

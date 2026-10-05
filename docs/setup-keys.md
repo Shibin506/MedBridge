@@ -20,7 +20,7 @@ Things to know:
   sample documents. Real patient papers need a paid/private setup and a data-processing agreement first.
 - **Limits:** the free tier has per-minute and per-day request limits. If you hit them, MedBridge shows
   "The AI service is busy... try again". Waiting a minute usually fixes it.
-- **Model names change.** The default is `gemini-2.5-flash`. If you see "does not know that model", set
+- **Model names change.** The default is `gemini-flash-latest` (Google's moving alias). If Google says a model name does not exist, MedBridge asks which models your key can use and switches by itself (it logs the name to use). To pin one, set
   `MEDBRIDGE_MODEL=` in `.env` to a current model name from Google AI Studio.
 - Claude still works: set `ANTHROPIC_API_KEY` instead (or `MEDBRIDGE_LLM=anthropic` to force it).
 
