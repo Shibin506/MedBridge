@@ -85,3 +85,16 @@ The first run on the heart-failure paper showed what the AI gets wrong, so these
 | A wrong number (400 mg for 40 mg) would still show "Found in your paper" | **Number check:** every number in dose / how often / duration must be in the supporting quote, else the item is flagged |
 | "Everything has been checked" was false reassurance | Honest wording, and a **review box that is always required** (the server refuses a plan without it, even when nothing is flagged) |
 | "for for 35 days", "naproxen" lowercase, daily weighing filed under "other" | duration cleaned in the data model, names capitalised, new `monitoring` category |
+
+## Second review round (from the gallbladder paper, real model)
+
+The real model dropped three details and our checker said "nothing wrong". Each now has a safety net that does not rely on the AI:
+
+| What the AI dropped | Safety net |
+|---|---|
+| "take **2 tablets**" -> dose written as "500 mg" (half the real amount) | **Tablet-count check:** if the quote says "N tablets/puffs/..." (N more than 1) and the dose/schedule/instructions never mention N, the item is flagged |
+| "...**until your surgeon says it is safe**" -> a temporary stop looked permanent | **"until" check:** the quote's "until ..." must appear in the item, and a stopped medicine now reads "Do not take this medicine until ..." |
+| "You may shower after 48 hours" never extracted | **Coverage check** (`coverage.py`): sentences of the paper that nothing extracted covers are listed as "Lines of your paper we did not use", with a Show in paper button |
+
+The coverage check is a hint, not a guarantee. It may list harmless explanations (reasons, side effects) and it can miss a dropped line
+whose words appear elsewhere. The prompt also now asks for tablet counts, `until` conditions and one item per instruction sentence.

@@ -53,10 +53,13 @@ export function describe(category: Category, item: AnyItem): { title: string; li
   if (category === "medications") {
     const m = item as Medication;
     const dose = m.dose && m.previous_dose ? `${m.dose} (was ${m.previous_dose})` : m.dose;
-    const how = [dose, m.route && ROUTE_LABEL[m.route], m.frequency, m.duration && `for ${m.duration}`].filter(Boolean).join(" · ");
+    const duration = m.duration && (/^(until|after|then)\b/i.test(m.duration) ? m.duration : `for ${m.duration}`);
+    const how = [dose, m.route && ROUTE_LABEL[m.route], m.frequency, m.status === "stop" ? null : duration].filter(Boolean).join(" · ");
+    // A medicine to stop says so, and keeps any "until ..." so a temporary stop never looks permanent.
+    const stopLine = `Do not take this medicine${duration ? ` ${duration}` : ""}.`;
     return {
       title: m.name,
-      lines: [how || (m.status === "stop" ? "Do not take this medicine." : "No dose or schedule found"),
+      lines: [m.status === "stop" ? stopLine : how || "No dose or schedule found", m.status === "stop" ? how : "",
               m.purpose ? `Why: ${m.purpose}` : "", m.instructions ?? ""].filter(Boolean),
       badge: STATUS_LABEL[m.status], tone: m.status === "stop" ? "danger" : m.status,
     };

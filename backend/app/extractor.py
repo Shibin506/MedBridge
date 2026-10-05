@@ -16,6 +16,10 @@ timing or purpose; use null instead.
 (keep original spelling and numbers). Do not paraphrase inside source_quote.
 - Medication status: 'stop' only when the document clearly says to stop or discontinue it; \
 'changed' only when the document says a dose or schedule changed; 'new' when started this stay.
+- A dose includes how many tablets/puffs when more than one: "500 mg tablet - take 2 tablets" is dose "500 mg, 2 tablets".
+- Keep every "until ..." condition. A medicine to stop "until your surgeon says it is safe" must say so in duration.
+- Do not drop permissions ("you may shower after 48 hours", "you may use acetaminophen") or limits. Make one
+  restriction item per instruction sentence instead of merging or skipping sentences.
 - If a medicine's dose changed, put the OLD dose in previous_dose.
 - Put a follow-up's phone number into its contact field as the number only, exactly as written (for example
   "555-0142", not "Call 555-0142 to schedule").

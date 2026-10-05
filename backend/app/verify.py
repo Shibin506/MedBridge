@@ -10,6 +10,7 @@ the human confirms.*
 
 import re
 
+from .coverage import uncovered_lines
 from .schemas import (
     ExtractionDraft,
     ExtractionResult,
@@ -31,6 +32,11 @@ def normalize(text: str) -> str:
 
 
 _DIGITS = re.compile(r"\d+")
+_DECIMALS = re.compile(r"\d+(?:\.\d+)?")
+_WORD_COUNTS = {"two": "2", "three": "3", "four": "4", "five": "5", "six": "6"}
+_UNITS = r"(?:tablets?|capsules?|pills?|puffs?|drops?|patch(?:es)?|sprays?|spoonfuls?|teaspoons?|tablespoons?)"
+_COUNT = re.compile(rf"\b(\d+(?:\.\d+)?|two|three|four|five|six)\s+{_UNITS}\b", re.I)
+_UNTIL = re.compile(r"\buntil\b[^.;,]*", re.I)
 
 
 def _numbers(text: str | None) -> list[str]:
@@ -62,6 +68,17 @@ def verify(draft: ExtractionDraft, source_text: str) -> ExtractionResult:
             issues.append("The drug name does not appear in its supporting quote.")
         if m.status != "stop" and (m.dose is None or m.frequency is None):
             issues.append("Dose or frequency is missing; check the paper.")
+        # "take 2 tablets": a dose that leaves out the count would look like half the real amount.
+        counts = {_WORD_COUNTS.get(c.lower(), c) for c in _COUNT.findall(m.source_quote)} - {"1", "1.0"}
+        have = set(_DECIMALS.findall(" ".join(filter(None, [m.dose, m.frequency, m.instructions]))))
+        lost = sorted(c for c in counts if c not in have)
+        if lost:
+            issues.append(f"The paper says to take {', '.join(lost)} at a time (tablets, puffs, ...) but the dose does not "
+                          "mention it. Check the dose.")
+        # "... until your surgeon says it is safe": a temporary instruction must not look permanent.
+        until = _UNTIL.search(m.source_quote)
+        if until and "until" not in " ".join(filter(None, [m.duration, m.instructions, m.frequency])).lower():
+            issues.append(f"The paper says “{until.group(0).strip()}”, which is missing here. Check whether this is temporary.")
         # Every number in the dose / schedule must be in the quote that "proves" it. This catches an AI that
         # writes 400 mg when the paper says 40 mg, which the quote check alone would not.
         quote_numbers = set(_numbers(m.source_quote))
@@ -93,6 +110,7 @@ def verify(draft: ExtractionDraft, source_text: str) -> ExtractionResult:
         unclear_items=draft.unclear_items,
         total_items=len(all_items),
         items_needing_confirmation=sum(i.needs_confirmation for i in all_items),
+        uncovered_lines=uncovered_lines(source_text, draft.model_dump()),
     )
 
 

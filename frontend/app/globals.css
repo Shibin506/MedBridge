@@ -93,3 +93,7 @@ input, select { font: inherit; padding: 8px 10px; border-radius: 8px; border: 1.
 @media (max-width: 600px) { .slot { grid-template-columns: 1fr; gap: 4px; } }
 
 .add-item { width: 100%; border: 1.5px dashed var(--line); margin: 6px 0 14px; }
+
+.item h3::first-letter { text-transform: uppercase; }
+.uncovered li { margin: 6px 0; }
+.uncovered button { margin-left: 8px; }

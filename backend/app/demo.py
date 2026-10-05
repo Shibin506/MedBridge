@@ -65,6 +65,10 @@ HEART = dict(
     warning_signs=[
         _ws("Gain more than 3 pounds in 1 day or 5 pounds in 1 week", "Call your doctor",
             "Gain more than 3 pounds in 1 day or 5 pounds in 1 week"),
+        _ws("More swelling in your feet, ankles or belly", "Call your doctor",
+            "Have more swelling in your feet, ankles or belly"),
+        _ws("Feel dizzy or lightheaded, or have a fast heartbeat", "Call your doctor",
+            "Feel dizzy or lightheaded, or have a fast heartbeat"),
         _ws("Need more pillows to sleep or wake up short of breath", "Call your doctor",
             "Need more pillows to sleep or wake up short of breath"),
         _ws("Chest pain or pressure that does not go away", "Call 911", "Chest pain or pressure that does not go away"),
@@ -85,7 +89,8 @@ HEART = dict(
 )
 
 PNEUMONIA = dict(
-    diagnosis_summary="Community-acquired pneumonia (infection in the right lung).",
+    diagnosis_summary="Community-acquired pneumonia (infection in the right lung). Treated with IV antibiotics for 3 days, "
+                      "then switched to pills.",
     medications=[
         _med("Amoxicillin-clavulanate", "875/125 mg", "oral", "twice a day with meals", "4 more days (last dose on the evening of 10/19)",
              None, "finish ALL tablets even if you feel better", "new",
@@ -107,16 +112,25 @@ PNEUMONIA = dict(
         _fu("Chest X-ray", None, "in 6 weeks", "Chest X-ray - in 6 weeks to confirm the pneumonia has cleared."),
     ],
     warning_signs=[
-        _ws("trouble breathing, chest pain, confusion", "Return to the Emergency Department or call 911",
-            "Return to the Emergency Department or call 911 for: trouble breathing, chest pain, confusion,"),
-        _ws("worsening cough, vomiting that keeps you from taking your pills", "Call your doctor",
-            "Call your doctor for: worsening cough, vomiting that keeps you from taking your pills,"),
+        _ws("trouble breathing, chest pain, confusion, lips or fingertips turning blue, or a fever above 101 F that lasts "
+            "more than 48 hours", "Return to the Emergency Department or call 911",
+            "Return to the Emergency Department or call 911 for: trouble breathing, chest pain, confusion, "
+            "lips or fingertips turning blue, or a fever above 101 F that lasts more than 48 hours."),
+        _ws("worsening cough, vomiting that keeps you from taking your pills, rash or severe diarrhea (possible antibiotic "
+            "reaction)", "Call your doctor",
+            "Call your doctor for: worsening cough, vomiting that keeps you from taking your pills, "
+            "rash or severe diarrhea (possible antibiotic reaction)."),
+        _ws("blood sugar readings above 300", "Call your doctor", "Call your doctor if readings are above 300."),
     ],
     restrictions=[
         _rs("other", "Check your blood sugar at least twice daily (before breakfast and before dinner) until the prednisone is finished",
             "check your blood sugar at least twice daily (before breakfast and"),
         _rs("other", "Do not take over-the-counter cough suppressants containing codeine",
             "Do NOT take: over-the-counter cough suppressants containing codeine."),
+        _rs("activity", "Rest at home for several days and return to normal activity slowly",
+            "Rest at home for several days. Return to normal activity slowly."),
+        _rs("diet", "Drink plenty of fluids unless told otherwise", "Drink plenty of fluids unless told otherwise."),
+        _rs("other", "Do not smoke and avoid smoke exposure", "Do not smoke and avoid smoke exposure."),
     ],
     unclear_items=[],
 )
@@ -134,18 +148,37 @@ HIP = dict(
              "Oxycodone 5 mg: 1 tablet every 6 hours ONLY IF pain is not controlled by acetaminophen."),
         _med("Docusate", "100 mg", "oral", "twice daily while taking oxycodone", None, None, None, "new",
              "Docusate 100 mg twice daily while taking oxycodone."),
+        _med("Senna", "8.6 mg", None, "at bedtime, only if no bowel movement in 2 days", None, None, None, "new",
+             "Add senna 8.6 mg at bedtime if no bowel movement in 2 days."),
     ],
-    follow_ups=[_fu("Surgeon visit", "Dr. Moreno", "2 weeks after surgery (06/26)", "Surgeon Dr. Moreno, 2 weeks after surgery (06/26).")],
+    follow_ups=[
+        _fu("Surgeon visit", "Dr. Moreno", "2 weeks after surgery (06/26)", "Surgeon Dr. Moreno, 2 weeks after surgery (06/26)."),
+        _fu("Home physical therapy", None, "within 2 days after you get home (the agency will call you)",
+            "Home physical therapy begins within 2 days after you get home; the agency will call you."),
+    ],
     warning_signs=[
-        _ws("sudden shortness of breath, chest pain, coughing blood", "Call 911",
-            "CALL 911 if: sudden shortness of breath, chest pain, coughing blood,"),
-        _ws("temperature over 101.5 F, redness, warmth or drainage at the incision", "Call the office (555-0188)",
-            "CALL THE OFFICE (555-0188) if: temperature over 101.5 F,"),
+        _ws("sudden shortness of breath, chest pain, coughing blood, signs of stroke, bleeding that will not stop, or if you "
+            "fall and cannot get up or your leg looks shortened or turned", "Call 911",
+            "CALL 911 if: sudden shortness of breath, chest pain, coughing blood, signs of stroke, bleeding "
+            "that will not stop, or if you fall and cannot get up or your leg looks shortened or turned."),
+        _ws("temperature over 101.5 F, redness, warmth or drainage at the incision, increasing pain, or calf pain/swelling in "
+            "either leg", "Call the office (555-0188)",
+            "CALL THE OFFICE (555-0188) if: temperature over 101.5 F, redness, warmth or drainage at the "
+            "incision, increasing pain, or calf pain/swelling in either leg."),
     ],
     restrictions=[
-        _rs("activity", "Do not bend your hip past 90 degrees for 6 weeks", "Do NOT bend your hip past 90 degrees"),
+        _rs("activity", "Do not bend your hip past 90 degrees (no low chairs or toilets without a raised seat)",
+            "Do NOT bend your hip past 90 degrees (no low chairs or toilets without a raised seat)."),
         _rs("activity", "Do not cross your legs or ankles", "Do NOT cross your legs or ankles."),
+        _rs("activity", "Do not twist your body toward the operated leg", "Do NOT twist your body toward the operated leg."),
+        _rs("activity", "Walk with the walker as taught by physical therapy; short walks 4-5 times a day",
+            "Walk with the walker as taught by physical therapy; short walks 4-5 times a day."),
+        _rs("activity", "No driving until cleared at your follow-up visit", "No driving until cleared at your follow-up visit."),
         _rs("wound_care", "Keep the dressing clean and dry", "Keep the dressing clean and dry."),
+        _rs("wound_care", "You may shower on 06/20 (7 days); no baths, pools or hot tubs for 6 weeks",
+            "You may shower on 06/20 (7 days); no baths, pools or hot tubs for 6 weeks."),
+        _rs("wound_care", "Do not put creams or ointments on the incision", "Do not put creams or ointments on the incision."),
+        _rs("medication_limit", "Avoid ibuprofen and naproxen while on apixaban", "Avoid ibuprofen and naproxen while on apixaban."),
     ],
     unclear_items=[],
 )
@@ -259,7 +292,7 @@ class DemoPlanClient:
 
         def med(m):
             if m["status"] == "stop":
-                how = f"Stop taking {m['name']}."
+                how = f"Stop taking {m['name']}" + (f" {m['duration']}" if m.get("duration") else "") + "."
             else:
                 bits = [m["dose"], _ROUTE_PLAIN.get(m["route"]), m["frequency"], f"for {m['duration']}" if m["duration"] else None]
                 how = "Take " + " ".join(b for b in bits if b) + "."

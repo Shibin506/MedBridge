@@ -26,6 +26,7 @@ export default function ConfirmStep({ extraction: ex, config, busy, error, onCha
   const [selected, setSelected] = useState<{ cat: Category; idx: number } | null>(null);
   const [ack, setAck] = useState(false);
   const [reviewed, setReviewed] = useState(false);
+  const [lineHighlight, setLineHighlight] = useState<string | null>(null);
   const [language, setLanguage] = useState("en");
   const [level, setLevel] = useState("simple");
   const markRef = useRef<HTMLElement>(null);
@@ -37,10 +38,11 @@ export default function ConfirmStep({ extraction: ex, config, busy, error, onCha
   const canMake = remaining === 0 && !needAck && reviewed && all.length > 0 && !busy;
 
   const range = useMemo(() => {
+    if (lineHighlight) return findQuote(ex.document_text, lineHighlight);
     if (!selected) return null;
     const item = items(selected.cat)[selected.idx];
     return item ? findQuote(ex.document_text, item.source_quote) : null;
-  }, [selected, ex]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selected, lineHighlight, ex]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { markRef.current?.scrollIntoView({ block: "center", behavior: "smooth" }); }, [range]);
 
@@ -87,7 +89,7 @@ export default function ConfirmStep({ extraction: ex, config, busy, error, onCha
                   key={`${key}-${idx}-${item.source_quote}`}
                   category={key} item={item}
                   selected={selected?.cat === key && selected.idx === idx}
-                  onSelect={() => setSelected({ cat: key, idx })}
+                  onSelect={() => { setLineHighlight(null); setSelected({ cat: key, idx }); }}
                   onConfirm={() => update(key, (l) => l.map((x, i) => (i === idx ? { ...x, patient_confirmed: true } : x)))}
                   onRemove={() => { setSelected(null); update(key, (l) => l.filter((_, i) => i !== idx)); }}
                   onSave={(patch) => update(key, (l) => l.map((x, i) => (i === idx ? { ...x, ...patch, patient_confirmed: true } : x)))}
@@ -96,6 +98,23 @@ export default function ConfirmStep({ extraction: ex, config, busy, error, onCha
               <AddItem category={key} onAdd={(item) => update(key, (l) => [...l, item])} />
             </section>
           ))}
+
+          {ex.uncovered_lines.length > 0 && (
+            <details className="card uncovered" open={ex.uncovered_lines.length <= 4}>
+              <summary><strong>Lines of your paper we did not use ({ex.uncovered_lines.length})</strong></summary>
+              <p className="small">
+                Some of these are just explanations. Others may be instructions we missed. If one matters, use a
+                “+ Add … we missed” button above.
+              </p>
+              <ul>
+                {ex.uncovered_lines.map((line) => (
+                  <li key={line}>{line}
+                    <button className="btn quiet" onClick={() => { setSelected(null); setLineHighlight(line); }}>Show in paper</button>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
 
           {ex.unclear_items.length > 0 && (
             <section className="card notice">

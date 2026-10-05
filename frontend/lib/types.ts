@@ -33,6 +33,7 @@ export interface ExtractionResult {
   total_items: number;
   items_needing_confirmation: number;
   document_text: string;
+  uncovered_lines: string[];
 }
 
 export interface PlanMedication {

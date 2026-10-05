@@ -28,14 +28,20 @@ Route = Literal[
 
 class MedicationDraft(BaseModel):
     name: str = Field(description="Drug name exactly as written (brand or generic).")
-    dose: str | None = Field(description="Strength per dose, e.g. '40 mg'. null if not stated.")
+    dose: str | None = Field(
+        description="Amount taken each time, exactly as the paper says, INCLUDING the number of tablets/puffs when it is "
+        "more than one (for example '500 mg, 2 tablets'). null if not stated."
+    )
     route: Route | None = Field(
         description="Route of administration as a standard clinical term, chosen from the paper's wording "
         "(e.g. 'by mouth' or 'swallow' -> oral, 'puffs' -> inhaled, 'shot' under the skin -> subcutaneous). "
         "Use 'other' if it is stated but not in the list. null if the paper does not say."
     )
     frequency: str | None = Field(description="How often, e.g. 'once daily in the morning'. null if not stated.")
-    duration: str | None = Field(description="How long, WITHOUT a leading 'for': '7 days', 'until follow-up'. null if not stated.")
+    duration: str | None = Field(
+        description="How long or until when, WITHOUT a leading 'for': '7 days', 'until your surgeon says it is safe'. "
+        "Always keep any 'until ...' condition, especially for medicines to stop. null if not stated."
+    )
     purpose: str | None = Field(description="Why it is taken, only if the document says so. Otherwise null.")
     instructions: str | None = Field(description="Special instructions, e.g. 'take with food'. null if none.")
     status: Literal["new", "changed", "continue", "stop"] = Field(
@@ -140,6 +146,8 @@ class ExtractionResult(BaseModel):
     items_needing_confirmation: int
     # The text we extracted from, so the UI can show "your paper" next to the data.
     document_text: str = ""
+    # Sentences of the paper that nothing extracted seems to cover (a hint that something may have been dropped).
+    uncovered_lines: list[str] = Field(default_factory=list)
 
 
 # --------------------------------------------------------------------------

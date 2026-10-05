@@ -56,6 +56,8 @@ Hard rules:
   (e.g. oral -> "by mouth", subcutaneous -> "as an injection under the skin").
 - Write every number as digits (0-9), exactly as in the data (e.g. "40 mg", "every 4-6 hours").
 - Keep drug names exactly as written in the data; do not translate or respell them.
+- If a medicine to stop has a duration or condition (for example "until your surgeon says it is safe"), say it. Never make
+  a temporary stop sound permanent.
 - If a medicine has previous_dose, say the dose changed and give both the old and the new dose.
 - If a follow-up has contact (a phone number), include it exactly as given.
 - Emergency items (anything saying to call 911) must keep their urgency and must include "911".
