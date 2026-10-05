@@ -10,6 +10,11 @@ Never paste a key into a chat, an issue, a commit or a screenshot. Keys live onl
 3. In the project folder: `cp .env.example .env`, open `.env`, and set `GEMINI_API_KEY=` to your key (no quotes, no spaces).
 4. Run `./scripts/run-demo.sh --live`, then upload one of the **fictional** samples.
 
+**Test the key before anything else:** `./scripts/check-key.sh`. It sends one tiny request to Google and tells you in
+plain English whether the key works, is rate-limited, or needs fixing. It never prints the key (only its first 4
+characters and its length). Keys from AI Studio start with `AIza`. Keys starting with `AQ.` are Google Cloud (Vertex)
+keys; if the checker says yours only works that way, add `GEMINI_BACKEND=vertex` to `.env`.
+
 Things to know:
 - **Privacy:** on free tiers, Google may use submitted content to improve its products. Use only the fictional
   sample documents. Real patient papers need a paid/private setup and a data-processing agreement first.

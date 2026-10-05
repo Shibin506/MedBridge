@@ -42,7 +42,7 @@ def _friendly(code: int | None, raw: str) -> str:
     low = raw.lower()
     if "api key" in low or code in (401, 403):
         return ("Gemini rejected the API key. Check GEMINI_API_KEY in your .env file: no spaces or quotes, "
-                "and a key created at https://aistudio.google.com/apikey.")
+                "and a key created at https://aistudio.google.com/apikey. Run ./scripts/check-key.sh to test the key.")
     if code == 404 or "not found" in low:
         return ("Gemini does not know that model name. Set MEDBRIDGE_MODEL in .env to a current model "
                 "listed at https://aistudio.google.com.")
@@ -52,8 +52,9 @@ def _friendly(code: int | None, raw: str) -> str:
 class GeminiClient:
     default_model = GEMINI_DEFAULT_MODEL
 
-    def __init__(self, api_key: str | None = None, client: Any | None = None):
+    def __init__(self, api_key: str | None = None, client: Any | None = None, vertex: bool = False):
         self._api_key = api_key
+        self._vertex = vertex  # True for the other kind of Google key (Google Cloud "Vertex AI express mode", starts with AQ.)
         self._client = client  # injectable for tests
         self.messages = SimpleNamespace(parse=self._parse)
 
@@ -62,7 +63,7 @@ class GeminiClient:
         if self._client is None:
             from google import genai  # imported lazily so the app starts without the package in demo mode
 
-            self._client = genai.Client(api_key=self._api_key)
+            self._client = genai.Client(vertexai=True, api_key=self._api_key) if self._vertex else genai.Client(api_key=self._api_key)
         return self._client
 
     def _parse(self, *, model: str, max_tokens: int, system: str, messages: list[dict], output_format: Any, **_ignored):
@@ -126,7 +127,7 @@ def make_client(provider: str | None = None) -> Any:
     if provider == "gemini":
         if not gemini_key:
             raise LLMError(NO_KEY_MESSAGE)
-        return GeminiClient(api_key=gemini_key)
+        return GeminiClient(api_key=gemini_key, vertex=os.environ.get("GEMINI_BACKEND", "").lower() == "vertex")
     if provider == "anthropic":
         if not os.environ.get("ANTHROPIC_API_KEY"):
             raise LLMError("MEDBRIDGE_LLM=anthropic but ANTHROPIC_API_KEY is not set.")
