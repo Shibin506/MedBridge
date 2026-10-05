@@ -44,3 +44,13 @@ def test_vertex_backend_is_selected_by_env(monkeypatch):
     assert make_client()._vertex is False
     monkeypatch.setenv("GEMINI_BACKEND", "vertex")
     assert isinstance(make_client(), GeminiClient) and make_client()._vertex is True
+
+
+def test_key_that_lost_its_prefix_gets_the_double_click_hint():
+    out = text("Ab8R" + "x" * 46, A(code=400), A(code=401))
+    assert "does not start with AIza or AQ." in out and "Double-clicking" in out
+
+
+def test_correctly_prefixed_keys_do_not_get_the_hint():
+    assert "Double-clicking" not in text("AQ.Ab8R" + "x" * 46, A(code=400), A(code=401))
+    assert "Double-clicking" not in text("AIza" + "x" * 35, A(code=400), A(code=401))

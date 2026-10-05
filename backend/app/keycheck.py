@@ -27,6 +27,15 @@ def advise(key: str, studio: Attempt, vertex: Attempt) -> list[str]:
                 "    GEMINI_BACKEND=vertex",
                 "Or, to use the free AI Studio instead, create a key at https://aistudio.google.com/apikey (starts with AIza)."]
     lines = [shape, "FAIL: Google rejected the key in both places."]
+    if not key.startswith(("AIza", "AQ.")):
+        lines += [
+            "",
+            "!! Your key does not start with AIza or AQ.  It may have lost its first characters when it was copied.",
+            "   Double-clicking a key stops at the first dot, so a key like “AQ.Ab8R…” loses its “AQ.” part.",
+            "   Use the COPY button next to the key in Google's page (or click and drag over the whole key),",
+            "   and check that the pasted line in .env starts with AIza or AQ.",
+            "",
+        ]
     if studio.code == 404 or vertex.code == 404:
         lines.append(f"One service says the model name is unknown. Set MEDBRIDGE_MODEL in .env to a current model name.")
     else:
