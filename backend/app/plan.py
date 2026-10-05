@@ -180,6 +180,8 @@ def assemble(draft: PlanDraft, req: PlanRequest) -> PatientPlan:
                 id=f"med_{n}", status=m.status, name=m.name, dose=m.dose, frequency=m.frequency,
                 how_to_take=out.how_to_take, why_taking=why,
                 why_source=None if why is None else ("your_paper" if m.purpose else "general_knowledge"),
+                # If the paper never said how much / how often, say so in the plan. Code decides this.
+                missing_info=[] if m.status == "stop" else [k for k, v in (("dose", m.dose), ("frequency", m.frequency)) if not v],
             )
         )
     return PatientPlan(

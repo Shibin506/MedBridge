@@ -206,3 +206,12 @@ def test_full_flow_extract_confirm_plan(demo_client):
     # 3) another language
     r = demo_client.post("/plan", json={"extraction": ex, "acknowledged_unclear": True, "language": "es"})
     assert r.json()["language_name"] == "Spanish"
+
+
+def test_plan_reports_information_missing_from_the_paper():
+    ex = confirm_everything(extract_sample("01_heart_failure.txt"))
+    plan = PlanGenerator(client=ScriptedClient(good_draft(ex))).generate(PlanRequest(extraction=ex))
+    by_name = {m.name: m for m in plan.medications}
+    assert by_name["Aspirin"].missing_info == ["frequency"]  # the paper never says how often
+    assert by_name["Furosemide"].missing_info == []
+    assert by_name["Ibuprofen"].missing_info == []  # stop medicines have no dose to miss

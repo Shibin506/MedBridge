@@ -155,6 +155,7 @@ class PlanMedication(BaseModel):
     how_to_take: str  # LLM
     why_taking: str | None  # LLM
     why_source: Literal["your_paper", "general_knowledge"] | None  # decided by code
+    missing_info: list[Literal["dose", "frequency"]] = Field(default_factory=list)  # decided by code
 
 
 class PlanItem(BaseModel):
