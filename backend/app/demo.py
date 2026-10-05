@@ -34,25 +34,25 @@ def _rs(cat, instruction, quote):
 HEART = dict(
     diagnosis_summary="Admitted for worsening shortness of breath and leg swelling from congestive heart failure.",
     medications=[
-        _med("Furosemide", "40 mg", "by mouth", "every morning", None, "a water pill to remove extra fluid",
+        _med("Furosemide", "40 mg", "oral", "every morning", None, "a water pill to remove extra fluid",
              "take it early in the day", "new", "Furosemide (Lasix) 40 mg tablet - take 1 tablet by mouth every morning"),
-        _med("Metoprolol succinate ER", "25 mg", "by mouth", "once daily", None, None,
+        _med("Metoprolol succinate ER", "25 mg", "oral", "once daily", None, None,
              "do not crush or chew; do not stop suddenly", "new",
              "Metoprolol succinate ER 25 mg tablet - take 1 tablet by mouth once daily"),
-        _med("Lisinopril", "10 mg", "by mouth", "once daily", None, None,
+        _med("Lisinopril", "10 mg", "oral", "once daily", None, None,
              "dose lowered from 20 mg because of a kidney blood test", "changed",
              "Lisinopril: DECREASE from 20 mg to 10 mg once daily"),
-        _med("Atorvastatin", "40 mg", "by mouth", "1 tablet at bedtime", None, None, None, "continue",
+        _med("Atorvastatin", "40 mg", "oral", "1 tablet at bedtime", None, None, None, "continue",
              "Atorvastatin 40 mg - 1 tablet at bedtime"),
         # Planted problem 1: frequency missing -> needs the patient's check.
-        _med("Aspirin", "81 mg", "by mouth", None, None, None, "take with food", "continue",
+        _med("Aspirin", "81 mg", "oral", None, None, None, "take with food", "continue",
              "Aspirin 81 mg - 1 tablet daily with food"),
         _med("Ibuprofen", None, None, None, None, None, "can make heart failure worse and hurt your kidneys", "stop",
              "Ibuprofen (Advil, Motrin)"),
         _med("Naproxen", None, None, None, None, None, "can make heart failure worse and hurt your kidneys", "stop",
              "naproxen (Aleve)"),
         # Planted problem 2: a made-up medicine. The document never mentions it.
-        _med("Potassium chloride", "20 mEq", "by mouth", "once daily", None, None, None, "new",
+        _med("Potassium chloride", "20 mEq", "oral", "once daily", None, None, None, "new",
              "Potassium chloride 20 mEq tablet - 1 tablet daily"),
     ],
     follow_ups=[
@@ -84,17 +84,17 @@ HEART = dict(
 PNEUMONIA = dict(
     diagnosis_summary="Community-acquired pneumonia (infection in the right lung).",
     medications=[
-        _med("Amoxicillin-clavulanate", "875/125 mg", "by mouth", "twice a day with meals", "4 more days (last dose evening of 10/19)",
+        _med("Amoxicillin-clavulanate", "875/125 mg", "oral", "twice a day with meals", "4 more days (last dose evening of 10/19)",
              None, "finish ALL tablets even if you feel better", "new",
              "Amoxicillin-clavulanate (Augmentin) 875/125 mg: 1 tablet by mouth twice a day with meals"),
-        _med("Prednisone", "40 mg for 2 days, then 20 mg for 2 days", "by mouth", "daily", "4 days, then stop", None,
+        _med("Prednisone", "40 mg for 2 days, then 20 mg for 2 days", "oral", "daily", "4 days, then stop", None,
              "take in the morning with food; can raise blood sugar", "new",
              "Prednisone taper: 40 mg daily for 2 days, then 20 mg daily for 2 days, then stop."),
-        _med("Guaifenesin", "600 mg", "by mouth", "every 12 hours as needed for cough/chest congestion", None, None, None, "new",
+        _med("Guaifenesin", "600 mg", "oral", "every 12 hours as needed for cough/chest congestion", None, None, None, "new",
              "Guaifenesin 600 mg: 1 tablet every 12 hours as needed for cough/chest congestion"),
-        _med("Metformin", "1000 mg", "by mouth", "twice daily with meals", None, None, "OK to resume tonight", "continue",
+        _med("Metformin", "1000 mg", "oral", "twice daily with meals", None, None, "OK to resume tonight", "continue",
              "Metformin 1000 mg: continue 1 tablet twice daily with meals"),
-        _med("Lisinopril", "20 mg", "by mouth", "once daily", None, None, None, "continue",
+        _med("Lisinopril", "20 mg", "oral", "once daily", None, None, None, "continue",
              "Lisinopril 20 mg: continue once daily"),
         _med("Albuterol inhaler", "2 puffs", "inhaled", "every 4-6 hours only if wheezing or short of breath", None, None, None, "new",
              "Albuterol inhaler: 2 puffs every 4-6 hours only if wheezing or short of breath"),
@@ -121,15 +121,15 @@ PNEUMONIA = dict(
 HIP = dict(
     diagnosis_summary="Left total hip replacement surgery.",
     medications=[
-        _med("Apixaban", "2.5 mg", "by mouth", "twice daily", "35 days after surgery", "to prevent blood clots",
+        _med("Apixaban", "2.5 mg", "oral", "twice daily", "35 days after surgery", "to prevent blood clots",
              "do not skip doses", "new", "Apixaban (Eliquis) 2.5 mg - 1 tablet by mouth twice daily for 35 days after surgery."),
-        _med("Acetaminophen", "1,000 mg", "by mouth", "every 8 hours on a schedule", "first 2 weeks, then as needed", None,
+        _med("Acetaminophen", "1,000 mg", "oral", "every 8 hours on a schedule", "first 2 weeks, then as needed", None,
              "no more than 3,000 mg in 24 hours", "new",
              "Acetaminophen 1,000 mg every 8 hours on a schedule for the first 2 weeks"),
-        _med("Oxycodone", "5 mg", "by mouth", "every 6 hours ONLY IF pain is not controlled by acetaminophen", None, None,
+        _med("Oxycodone", "5 mg", "oral", "every 6 hours ONLY IF pain is not controlled by acetaminophen", None, None,
              "may cause drowsiness; no driving or alcohol", "new",
              "Oxycodone 5 mg: 1 tablet every 6 hours ONLY IF pain is not controlled by acetaminophen."),
-        _med("Docusate", "100 mg", "by mouth", "twice daily while taking oxycodone", None, None, None, "new",
+        _med("Docusate", "100 mg", "oral", "twice daily while taking oxycodone", None, None, None, "new",
              "Docusate 100 mg twice daily while taking oxycodone."),
     ],
     follow_ups=[_fu("Surgeon visit", "Dr. Moreno", "2 weeks after surgery (06/26)", "Surgeon Dr. Moreno, 2 weeks after surgery (06/26).")],
@@ -176,6 +176,12 @@ _GENERIC_WHY = {
 }
 
 
+_ROUTE_PLAIN = {"oral": "by mouth", "sublingual": "under the tongue", "inhaled": "inhaled", "topical": "on the skin",
+                "ophthalmic": "in the eye", "otic": "in the ear", "nasal": "in the nose", "rectal": "rectally",
+                "subcutaneous": "as an injection under the skin", "intramuscular": "as an injection into a muscle",
+                "intravenous": "through a vein (IV)", "other": None}
+
+
 class DemoPlanClient:
     """Writes a plain (English) plan from the confirmed data with simple rules, no LLM."""
 
@@ -192,7 +198,7 @@ class DemoPlanClient:
             if m["status"] == "stop":
                 how = f"Stop taking {m['name']}."
             else:
-                bits = [m["dose"], m["route"], m["frequency"], f"for {m['duration']}" if m["duration"] else None]
+                bits = [m["dose"], _ROUTE_PLAIN.get(m["route"]), m["frequency"], f"for {m['duration']}" if m["duration"] else None]
                 how = "Take " + " ".join(b for b in bits if b) + "."
                 if m["status"] == "changed":
                     how = "Your dose changed. " + how

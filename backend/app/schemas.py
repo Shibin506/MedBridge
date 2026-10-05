@@ -19,10 +19,20 @@ from pydantic import BaseModel, Field
 # --------------------------------------------------------------------------
 # Layer 1: what the LLM fills in
 # --------------------------------------------------------------------------
+Route = Literal[
+    "oral", "sublingual", "inhaled", "topical", "ophthalmic", "otic", "nasal",
+    "rectal", "subcutaneous", "intramuscular", "intravenous", "other",
+]
+
+
 class MedicationDraft(BaseModel):
     name: str = Field(description="Drug name exactly as written (brand or generic).")
     dose: str | None = Field(description="Strength per dose, e.g. '40 mg'. null if not stated.")
-    route: str | None = Field(description="e.g. 'by mouth', 'inhaled', 'injection'. null if not stated.")
+    route: Route | None = Field(
+        description="Route of administration as a standard clinical term, chosen from the paper's wording "
+        "(e.g. 'by mouth' or 'swallow' -> oral, 'puffs' -> inhaled, 'shot' under the skin -> subcutaneous). "
+        "Use 'other' if it is stated but not in the list. null if the paper does not say."
+    )
     frequency: str | None = Field(description="How often, e.g. 'once daily in the morning'. null if not stated.")
     duration: str | None = Field(description="How long, e.g. 'for 7 days', 'until follow-up'. null if not stated.")
     purpose: str | None = Field(description="Why it is taken, only if the document says so. Otherwise null.")

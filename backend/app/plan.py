@@ -54,6 +54,8 @@ Hard rules:
 - Use ONLY the facts in the data. Never add a dose, time, duration, medicine, symptom or instruction
   that is not in the data. Never tell the patient to start, skip, change or stop anything the data
   does not say.
+- 'route' is a clinical term (oral, inhaled, subcutaneous, ...). Say it in everyday words for the patient
+  (e.g. oral -> "by mouth", subcutaneous -> "as an injection under the skin").
 - Write every number as digits (0-9), exactly as in the data (e.g. "40 mg", "every 4-6 hours").
 - Keep drug names exactly as written in the data; do not translate or respell them.
 - Emergency items (anything saying to call 911) must keep their urgency and must include "911".

@@ -215,3 +215,19 @@ def test_plan_reports_information_missing_from_the_paper():
     assert by_name["Aspirin"].missing_info == ["frequency"]  # the paper never says how often
     assert by_name["Furosemide"].missing_info == []
     assert by_name["Ibuprofen"].missing_info == []  # stop medicines have no dose to miss
+
+
+def test_route_is_a_standard_clinical_term_and_bad_values_are_rejected():
+    ex = extract_sample("01_heart_failure.txt")
+    assert {m.route for m in ex.medications} <= {"oral", None}
+    assert next(m for m in ex.medications if m.name == "Furosemide").route == "oral"
+    from app.schemas import MedicationDraft
+    with pytest.raises(ValueError):
+        MedicationDraft(name="X", dose=None, route="by mouth", frequency=None, duration=None, purpose=None,
+                        instructions=None, status="new", source_quote="x")
+
+
+def test_demo_plan_says_by_mouth_in_plain_words():
+    ex = confirm_everything(extract_sample("01_heart_failure.txt"))
+    draft = good_draft(ex)
+    assert "by mouth" in draft.medications[0].how_to_take  # plan is plain even though the data says "oral"

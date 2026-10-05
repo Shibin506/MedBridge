@@ -2,14 +2,22 @@
 import { useState } from "react";
 import type { AnyItem, Category, Medication, FollowUp, WarningSign, Restriction } from "@/lib/types";
 
-type Field = { key: string; label: string; options?: string[] };
+type Field = { key: string; label: string; options?: [value: string, label: string][]; allowEmpty?: boolean };
+
+// Standard clinical route-of-administration terms (abbreviation in brackets, as clinicians write them).
+export const ROUTE_LABEL: Record<string, string> = {
+  oral: "Oral (PO)", sublingual: "Sublingual (SL)", inhaled: "Inhaled", topical: "Topical",
+  ophthalmic: "Ophthalmic (eye)", otic: "Otic (ear)", nasal: "Nasal", rectal: "Rectal (PR)",
+  subcutaneous: "Subcutaneous (SC)", intramuscular: "Intramuscular (IM)", intravenous: "Intravenous (IV)", other: "Other",
+};
+const ROUTE_OPTIONS = Object.entries(ROUTE_LABEL) as [string, string][];
 
 const FIELDS: Record<Category, Field[]> = {
   medications: [
-    { key: "name", label: "Medicine" }, { key: "dose", label: "Dose" }, { key: "route", label: "How (e.g. by mouth)" },
+    { key: "name", label: "Medicine" }, { key: "dose", label: "Dose" }, { key: "route", label: "Route", options: ROUTE_OPTIONS, allowEmpty: true },
     { key: "frequency", label: "How often" }, { key: "duration", label: "For how long" },
     { key: "instructions", label: "Special instructions" },
-    { key: "status", label: "Status", options: ["new", "changed", "continue", "stop"] },
+    { key: "status", label: "Status", options: [["new", "New"], ["changed", "Changed"], ["continue", "Continue"], ["stop", "Stop"]] },
   ],
   follow_ups: [{ key: "what", label: "What" }, { key: "with_whom", label: "With whom" }, { key: "when", label: "When" }],
   warning_signs: [{ key: "symptom", label: "Warning sign" }, { key: "action", label: "What to do" }],
@@ -21,7 +29,7 @@ const STATUS_LABEL: Record<string, string> = { new: "NEW", changed: "CHANGED", c
 export function describe(category: Category, item: AnyItem): { title: string; lines: string[]; badge?: string; tone?: string } {
   if (category === "medications") {
     const m = item as Medication;
-    const how = [m.dose, m.route, m.frequency, m.duration && `for ${m.duration}`].filter(Boolean).join(" · ");
+    const how = [m.dose, m.route && ROUTE_LABEL[m.route], m.frequency, m.duration && `for ${m.duration}`].filter(Boolean).join(" · ");
     return { title: m.name, lines: [how || "No dose or schedule found", m.instructions ?? ""].filter(Boolean),
       badge: STATUS_LABEL[m.status], tone: m.status === "stop" ? "danger" : m.status };
   }
@@ -77,7 +85,8 @@ export default function ItemCard({ category, item, selected, onSelect, onConfirm
             <label key={f.key}>{f.label}
               {f.options ? (
                 <select value={draft[f.key]} onChange={(e) => setDraft({ ...draft, [f.key]: e.target.value })}>
-                  {f.options.map((o) => <option key={o} value={o}>{o}</option>)}
+                  {f.allowEmpty && <option value="">Not stated</option>}
+                  {f.options.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                 </select>
               ) : (
                 <input value={draft[f.key]} onChange={(e) => setDraft({ ...draft, [f.key]: e.target.value })} />

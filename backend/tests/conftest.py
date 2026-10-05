@@ -23,7 +23,7 @@ def draft_for_heart_failure() -> ExtractionDraft:
             "diagnosis_summary": "Admitted for worsening congestive heart failure.",
             "medications": [
                 {
-                    "name": "Furosemide", "dose": "40 mg", "route": "by mouth",
+                    "name": "Furosemide", "dose": "40 mg", "route": "oral",
                     "frequency": "every morning", "duration": None,
                     "purpose": "water pill to remove extra fluid", "instructions": "take early in the day",
                     "status": "new",
@@ -31,7 +31,7 @@ def draft_for_heart_failure() -> ExtractionDraft:
                 },
                 {
                     # Hallucinated: the document never mentions warfarin.
-                    "name": "Warfarin", "dose": "5 mg", "route": "by mouth",
+                    "name": "Warfarin", "dose": "5 mg", "route": "oral",
                     "frequency": "once daily", "duration": None, "purpose": None, "instructions": None,
                     "status": "new",
                     "source_quote": "Warfarin 5 mg once daily at night",
