@@ -295,6 +295,23 @@ class InteractionHint(BaseModel):
     excerpt: str  # verbatim sentence from that source
 
 
+class TotalContribution(BaseModel):
+    name: str
+    mg_per_dose: int
+    doses_per_day: int  # the most the schedule or the "as needed" wording allows
+    mg_per_day: int
+    as_needed: bool = False
+
+
+class DailyTotalFinding(BaseModel):
+    ingredient: str
+    total_mg: int
+    limit_mg: int
+    limit_source: Literal["your paper", "common label maximum"]
+    contributors: list[TotalContribution]
+    message: str
+
+
 class SafetyReport(BaseModel):
     normalized: list[NormalizedMed]
     duplicates: list[DuplicateFinding]
@@ -302,3 +319,4 @@ class SafetyReport(BaseModel):
     interactions: list[InteractionHint]
     interaction_check: Literal["done", "unavailable", "not_run"]
     notes: list[str]
+    daily_totals: list[DailyTotalFinding] = Field(default_factory=list)

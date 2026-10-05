@@ -10,11 +10,17 @@ export default function SafetyPanel({ report }: { report: SafetyReport | null })
       </section>
     );
   }
-  const findings = report.duplicates.length + report.stopped_conflicts.length + report.interactions.length;
+  const findings = report.duplicates.length + report.stopped_conflicts.length + report.interactions.length + report.daily_totals.length;
   return (
     <section className={`card ${findings ? "notice" : ""}`} dir="ltr" lang="en">
       <h2>Safety check{findings ? ": please read" : ""}</h2>
 
+      {report.daily_totals.map((t) => (
+        <div key={t.ingredient} className="finding danger">
+          <strong>Too much {t.ingredient} in one day: about {t.total_mg.toLocaleString()} mg (limit {t.limit_mg.toLocaleString()} mg)</strong>
+          <p>{t.message}</p>
+        </div>
+      ))}
       {report.duplicates.map((d) => (
         <div key={d.ingredient} className="finding danger"><strong>Same ingredient twice: {d.ingredient}</strong>
           <p>{d.message}</p></div>
