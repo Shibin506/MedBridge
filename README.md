@@ -21,7 +21,7 @@ when something looks wrong.
 
 ## Quickest way (no API key needed: demo mode)
 
-Needs Python 3.10+ and Node.js 20+.
+Needs **Python 3.10+** (macOS ships 3.9, which is too old; `brew install python@3.12` or use python.org) and Node.js 20+.
 
 ```bash
 git clone https://github.com/Shibin506/MedBridge && cd MedBridge
