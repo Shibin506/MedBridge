@@ -67,7 +67,8 @@ class FollowUpDraft(BaseModel):
     when: str | None = Field(description="Timing exactly as written, e.g. 'within 7 days'. null if not stated.")
     contact: str | None = Field(
         default=None,
-        description="Phone number or how to book, exactly as written (e.g. '555-0142'). null if the paper gives none.",
+        description="The phone number ONLY, exactly as written (e.g. '555-0142'), without words like 'Call'. "
+        "If there is no number but a way to book is given, a short phrase. null if the paper gives none.",
     )
     source_quote: str = Field(description="Verbatim excerpt from the document that supports this item.")
 

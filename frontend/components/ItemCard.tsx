@@ -56,7 +56,8 @@ export function describe(category: Category, item: AnyItem): { title: string; li
     const how = [dose, m.route && ROUTE_LABEL[m.route], m.frequency, m.duration && `for ${m.duration}`].filter(Boolean).join(" · ");
     return {
       title: m.name,
-      lines: [how || "No dose or schedule found", m.purpose ? `Why: ${m.purpose}` : "", m.instructions ?? ""].filter(Boolean),
+      lines: [how || (m.status === "stop" ? "Do not take this medicine." : "No dose or schedule found"),
+              m.purpose ? `Why: ${m.purpose}` : "", m.instructions ?? ""].filter(Boolean),
       badge: STATUS_LABEL[m.status], tone: m.status === "stop" ? "danger" : m.status,
     };
   }
