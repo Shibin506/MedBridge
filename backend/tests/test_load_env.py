@@ -21,8 +21,8 @@ def test_plain_value(tmp_path):
 
 
 def test_the_exact_mistake_that_broke_the_launcher_a_space_inside_the_key(tmp_path):
-    got = load(tmp_path, "GEMINI_API_KEY=AQ. Ab8RN6Ka69\n", ["GEMINI_API_KEY"])
-    assert got["GEMINI_API_KEY"] == "[AQ.Ab8RN6Ka69]"  # repaired, and nothing was run as a command
+    got = load(tmp_path, "GEMINI_API_KEY=AQ. Zq7TestKey\n", ["GEMINI_API_KEY"])
+    assert got["GEMINI_API_KEY"] == "[AQ.Zq7TestKey]"  # repaired, and nothing was run as a command
 
 
 def test_quotes_spaces_around_equals_and_windows_line_endings(tmp_path):

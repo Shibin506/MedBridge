@@ -33,9 +33,9 @@ def test_unknown_model_is_called_out():
 
 
 def test_the_report_never_contains_more_than_the_first_four_key_characters():
-    key = "AQ.Ab8RN6SECRETSECRETSECRETSECRET"
+    key = "AQ" + "." + "Zq" + "TESTONLY" * 4  # synthetic; built at runtime so no key-shaped text is committed
     out = text(key, A(code=400, note="nope"), A(code=400, note="nope"))
-    assert "SECRET" not in out and key not in out
+    assert "TESTONLY" not in out and key not in out
 
 
 def test_vertex_backend_is_selected_by_env(monkeypatch):
@@ -47,10 +47,10 @@ def test_vertex_backend_is_selected_by_env(monkeypatch):
 
 
 def test_key_that_lost_its_prefix_gets_the_double_click_hint():
-    out = text("Ab8R" + "x" * 46, A(code=400), A(code=401))
+    out = text("Zz9Q" + "x" * 46, A(code=400), A(code=401))
     assert "does not start with AIza or AQ." in out and "Double-clicking" in out
 
 
 def test_correctly_prefixed_keys_do_not_get_the_hint():
-    assert "Double-clicking" not in text("AQ.Ab8R" + "x" * 46, A(code=400), A(code=401))
+    assert "Double-clicking" not in text("AQ.Zz9Q" + "x" * 46, A(code=400), A(code=401))
     assert "Double-clicking" not in text("AIza" + "x" * 35, A(code=400), A(code=401))

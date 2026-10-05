@@ -31,7 +31,7 @@ def advise(key: str, studio: Attempt, vertex: Attempt) -> list[str]:
         lines += [
             "",
             "!! Your key does not start with AIza or AQ.  It may have lost its first characters when it was copied.",
-            "   Double-clicking a key stops at the first dot, so a key like “AQ.Ab8R…” loses its “AQ.” part.",
+            "   Double-clicking a key stops at the first dot, so a key like “AQ.xxxx…” loses its “AQ.” part.",
             "   Use the COPY button next to the key in Google's page (or click and drag over the whole key),",
             "   and check that the pasted line in .env starts with AIza or AQ.",
             "",
