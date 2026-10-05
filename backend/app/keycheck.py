@@ -1,7 +1,9 @@
 """Test a Gemini key against Google and say what to do. Never prints the key."""
 
 import os
+import sys
 from dataclasses import dataclass
+from pathlib import Path
 
 from .llm import GEMINI_DEFAULT_MODEL, GeminiClient
 
@@ -79,7 +81,34 @@ def _try(name: str, key: str, model: str, vertex: bool) -> Attempt:
         return Attempt(name, False, None, f"could not reach Google ({type(exc).__name__})")
 
 
-def run() -> int:
+LOST_PREFIX = "AQ."
+KEY_LENGTH_WITHOUT_PREFIX = 50  # keys that start with AQ. are 53 characters long in total
+
+
+def write_key(env_path: Path, key: str, vertex: bool) -> None:
+    """Replace the key (and backend) lines in .env, keeping every other line. Never prints the key."""
+    lines = env_path.read_text().splitlines() if env_path.exists() else []
+    lines = [l for l in lines if not l.startswith(("GEMINI_API_KEY=", "GEMINI_BACKEND="))]
+    head = [f"GEMINI_API_KEY={key}"] + (["GEMINI_BACKEND=vertex"] if vertex else [])
+    env_path.write_text("\n".join(head + lines) + "\n")
+    env_path.chmod(0o600)
+
+
+def try_restoring_prefix(key: str, model: str) -> tuple[str, bool] | None:
+    """If the key looks like it lost its “AQ.” start, test the repaired key. Returns (repaired_key, needs_vertex)."""
+    if key.startswith(("AIza", LOST_PREFIX)) or len(key) != KEY_LENGTH_WITHOUT_PREFIX:
+        return None
+    repaired = LOST_PREFIX + key
+    studio = _try("AI Studio", repaired, model, vertex=False)
+    if studio.ok or studio.code == 429:
+        return repaired, False
+    vertex = _try("Vertex express", repaired, model, vertex=True)
+    if vertex.ok or vertex.code == 429:
+        return repaired, True
+    return None
+
+
+def run(fix: bool = False) -> int:
     key = (os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") or "").strip()
     if not key:
         print("No key found. Copy .env.example to .env and put your key after GEMINI_API_KEY=")
@@ -90,4 +119,21 @@ def run() -> int:
     vertex = Attempt("Vertex express", False, None, "skipped") if studio.ok else _try("Vertex express", key, model, vertex=True)
     print()
     print("\n".join(advise(key, studio, vertex)))
-    return 0 if (studio.ok or studio.code == 429 or vertex.ok or vertex.code == 429) else 1
+    if studio.ok or studio.code == 429 or vertex.ok or vertex.code == 429:
+        return 0
+
+    found = try_restoring_prefix(key, model)
+    if found is None:
+        return 1
+    repaired, vertex_needed = found
+    print()
+    print("FOUND IT: your key works once the missing “AQ.” is put back at the start.")
+    if not fix:
+        print("Run this to repair .env automatically (it only saves a key that Google has just accepted):")
+        print("    ./scripts/check-key.sh --fix")
+        return 1
+    env_path = Path(os.environ.get("MEDBRIDGE_ENV_FILE") or Path(__file__).resolve().parents[2] / ".env")
+    write_key(env_path, repaired, vertex_needed)
+    print(f"Repaired .env (key is now {len(repaired)} characters" + (", GEMINI_BACKEND=vertex added" if vertex_needed else "") + ").")
+    print("Run ./scripts/run-demo.sh --live. Since this key was shared in a chat, replace it with a fresh one after your testing.")
+    return 0

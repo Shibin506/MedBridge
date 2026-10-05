@@ -5,4 +5,4 @@ cd "$(dirname "$0")/.."
 . ./scripts/load-env.sh
 load_env .env
 [ -x backend/.venv/bin/python ] || { echo "Run ./scripts/run-demo.sh once first (it sets everything up)."; exit 1; }
-cd backend && exec .venv/bin/python scripts/check_key.py
+cd backend && exec .venv/bin/python scripts/check_key.py "$@"
