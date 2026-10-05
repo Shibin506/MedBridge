@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # One command to run MedBridge.
 #   ./scripts/run-demo.sh          demo mode: pre-written answers, no API key needed
-#   ./scripts/run-demo.sh --live   real AI: needs GEMINI_API_KEY in the .env file (see .env.example)
+#   ./scripts/run-demo.sh --live   real AI: needs a key in .env (run ./scripts/set-key.sh first)
 # Then open http://localhost:3000. Press Ctrl+C to stop everything.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -11,10 +11,10 @@ LIVE=0
 . ./scripts/load-env.sh
 load_env .env   # keys live in .env (never committed); read as plain text, never run as code
 
-if [ "$LIVE" = 1 ] && [ -z "${GEMINI_API_KEY:-}${GOOGLE_API_KEY:-}${ANTHROPIC_API_KEY:-}" ]; then
+if [ "$LIVE" = 1 ] && [ -z "${GROQ_API_KEY:-}${GEMINI_API_KEY:-}${GOOGLE_API_KEY:-}${ANTHROPIC_API_KEY:-}${LLM_BASE_URL:-}" ]; then
   echo "Live mode needs an AI key, and none was found."
-  echo "1. Get a free key: https://aistudio.google.com/apikey"
-  echo "2. Copy .env.example to .env and paste it after GEMINI_API_KEY="
+  echo "1. Get a free Groq key: https://console.groq.com/keys"
+  echo "2. Run ./scripts/set-key.sh and paste it"
   echo "3. Run ./scripts/run-demo.sh --live again"
   exit 1
 fi

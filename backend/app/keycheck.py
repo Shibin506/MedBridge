@@ -5,7 +5,17 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from .llm import GEMINI_DEFAULT_MODEL, GeminiClient
+import httpx
+
+from .llm import (
+    GEMINI_DEFAULT_MODEL,
+    GROQ_BASE_URL,
+    GROQ_DEFAULT_MODEL,
+    GROQ_PREFERRED,
+    GeminiClient,
+    pick_chat_model,
+    selected_provider,
+)
 
 
 @dataclass
@@ -81,6 +91,47 @@ def _try(name: str, key: str, model: str, vertex: bool) -> Attempt:
         return Attempt(name, False, None, f"could not reach Google ({type(exc).__name__})")
 
 
+def groq_advise(key: str, status: int | None, model_ids: list[str], model: str) -> list[str]:
+    """Plain-English next steps from Groq's answer to 'list my models'."""
+    shape = f"Your key starts with “{key[:4]}” and is {len(key)} characters long."
+    if status == 200:
+        lines = [shape, "PASS: Groq accepted the key."]
+        if model_ids and model not in model_ids:
+            alt = pick_chat_model(model_ids, GROQ_PREFERRED)
+            lines += [f"Note: the model “{model}” is not available to your account; the app will use “{alt}” by itself.",
+                      f"To make it permanent, add this line to .env:  MEDBRIDGE_MODEL={alt}"]
+        return lines + ["Nothing else to change. Run ./scripts/run-demo.sh --live."]
+    if status == 429:
+        return [shape, "The key is VALID but you have used up Groq's free limit for now.", "Wait a minute and try again."]
+    if status in (401, 403):
+        lines = [shape, "FAIL: Groq rejected the key."]
+        if not key.startswith("gsk_"):
+            lines += ["!! Groq keys start with gsk_ and yours does not. It may be a different kind of key, or part of it was cut off."]
+        return lines + ["1. Open https://console.groq.com/keys and click “Create API Key”.",
+                        "2. Click the Copy button (Groq shows the key only once).",
+                        "3. Run ./scripts/set-key.sh and paste it (Cmd+V), then press Enter."]
+    if status is None:
+        return [shape, "Could not reach Groq. Check your internet connection and try again."]
+    return [shape, f"Groq answered with an unexpected error ({status}). Try again in a minute."]
+
+
+def run_groq() -> int:
+    key = os.environ.get("GROQ_API_KEY", "").strip()
+    if not key:
+        print("No Groq key found. Run ./scripts/set-key.sh and paste your key.")
+        return 2
+    model = os.environ.get("MEDBRIDGE_MODEL") or GROQ_DEFAULT_MODEL
+    print(f"Testing the Groq key (listing the models your account can use)...")
+    try:
+        r = httpx.get(GROQ_BASE_URL + "/models", headers={"Authorization": f"Bearer {key}"}, timeout=20)
+        status, ids = r.status_code, ([m.get("id", "") for m in r.json().get("data", [])] if r.status_code == 200 else [])
+    except (httpx.HTTPError, ValueError):
+        status, ids = None, []
+    print()
+    print("\n".join(groq_advise(key, status, ids, model)))
+    return 0 if status in (200, 429) else 1
+
+
 LOST_PREFIX = "AQ."
 KEY_LENGTH_WITHOUT_PREFIX = 50  # keys that start with AQ. are 53 characters long in total
 
@@ -109,6 +160,8 @@ def try_restoring_prefix(key: str, model: str) -> tuple[str, bool] | None:
 
 
 def run(fix: bool = False) -> int:
+    if selected_provider() == "groq":
+        return run_groq()
     key = (os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") or "").strip()
     if not key:
         print("No key found. Copy .env.example to .env and put your key after GEMINI_API_KEY=")

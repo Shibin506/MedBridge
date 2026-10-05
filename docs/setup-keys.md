@@ -3,30 +3,41 @@
 Never paste a key into a chat, an issue, a commit or a screenshot. Keys live only in the `.env` file
 (ignored by git) or in your hosting service's secret settings. If a key leaks, delete it and make a new one.
 
-## 1. AI: Google Gemini (free tier)
+## 1. AI: Groq (free tier, recommended)
 
-1. Go to https://aistudio.google.com/apikey and sign in with a Google account.
-2. Click **Create API key** and copy it.
-3. In the project folder run `./scripts/set-key.sh`, paste the key when asked (nothing shows on screen), press Enter. It writes `.env` for you and tests the key. (Editing `.env` by hand also works: one line, `GEMINI_API_KEY=<key>`, no quotes or spaces.)
-4. Run `./scripts/run-demo.sh --live`, then upload one of the **fictional** samples.
+1. Go to https://console.groq.com and sign up (free).
+2. Open **API Keys** (https://console.groq.com/keys) and click **Create API Key**.
+3. Click the **Copy** button. Groq shows the key only once. It starts with `gsk_`, and because it has no dots,
+   double-clicking it also selects the whole key.
+4. In the project folder run `./scripts/set-key.sh`, paste with Cmd+V (nothing shows on screen), and press Enter.
+   It saves the key to `.env` and tests it with Groq. (Hand-editing also works: one line, `GROQ_API_KEY=<key>`.)
+5. Run `./scripts/run-demo.sh --live` and upload one of the **fictional** samples.
 
-**Test the key before anything else:** `./scripts/check-key.sh`. It sends one tiny request to Google and tells you in
-plain English whether the key works, is rate-limited, or needs fixing. It never prints the key (only its first 4
-characters and its length). Keys from AI Studio start with `AIza`. Keys starting with `AQ.` are Google Cloud (Vertex)
-keys; if the checker says yours only works that way, add `GEMINI_BACKEND=vertex` to `.env`.
+Test the key any time with `./scripts/check-key.sh`. It never prints the key, only its first 4 characters and its length.
 
 Things to know:
-- **Privacy:** on free tiers, Google may use submitted content to improve its products. Use only the fictional
-  sample documents. Real patient papers need a paid/private setup and a data-processing agreement first.
-- **Limits:** the free tier has per-minute and per-day request limits. If you hit them, MedBridge shows
-  "The AI service is busy... try again". Waiting a minute usually fixes it.
-- **Model names change.** The default is `gemini-flash-latest` (Google's moving alias). If Google says a model name does not exist, MedBridge asks which models your key can use and switches by itself (it logs the name to use). To pin one, set
-  `MEDBRIDGE_MODEL=` in `.env` to a current model name from Google AI Studio.
-- Claude still works: set `ANTHROPIC_API_KEY` instead (or `MEDBRIDGE_LLM=anthropic` to force it).
+- **Privacy:** free hosted tiers may log or use what you send. Use only the fictional sample documents. For real
+  patient papers you would need a paid or private setup first (or a model on your own computer, see below).
+- **Limits:** the free tier has per-minute and per-day limits. If you hit them, MedBridge shows "The AI service is
+  busy... try again". Waiting a minute usually fixes it.
+- **Models change.** The default is `openai/gpt-oss-120b`. If Groq says the name is unknown, MedBridge lists the models
+  your account can use and switches by itself (it logs the name to put in `.env` as `MEDBRIDGE_MODEL`).
+- **Structured answers:** MedBridge asks for a strict schema first. If a model cannot do that, it falls back to plain
+  JSON mode, and asks the model once to fix its own answer if the JSON is wrong. The checker still verifies every fact.
+- **Other OpenAI-compatible services** (OpenRouter, Mistral, GitHub Models) and **Ollama on your own computer** (no key,
+  nothing leaves your machine): set `MEDBRIDGE_LLM=openai_compat`, `LLM_BASE_URL=...` and `MEDBRIDGE_MODEL=...` in `.env`.
 
 Quality check to do once: run `python scripts/try_extract.py samples/01_heart_failure.txt` (from `backend/`, with the
-key in your environment) and look at how many items come back flagged. The checker flags any quote the AI
-copied wrongly, which is a good measure of how well a given model follows the "copy exactly" rule.
+key in your environment) and look at how many items come back flagged. The checker flags any quote the AI copied
+wrongly, which is a good measure of how well a given model follows the "copy exactly" rule.
+
+## 1b. AI: Google Gemini (alternative)
+
+1. Create a key at https://aistudio.google.com/apikey and use its **Copy** button (keys can start with `AIza` or `AQ.`;
+   double-clicking stops at the dot and loses the start).
+2. `./scripts/set-key.sh gemini`, then `./scripts/check-key.sh`. If the checker says the key only works as a Google Cloud
+   (Vertex) key, add `GEMINI_BACKEND=vertex` to `.env`. `./scripts/check-key.sh --fix` repairs a key that lost its `AQ.` start.
+3. To use Gemini when a Groq key is also saved, set `MEDBRIDGE_LLM=gemini` in `.env`.
 
 ## 2. SMS: Twilio (needed from Phase 4)
 

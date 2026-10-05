@@ -118,3 +118,41 @@ def test_run_with_fix_repairs_env_and_without_fix_does_not(monkeypatch, tmp_path
     assert env.read_text() == f"GEMINI_API_KEY=AQ.{short}\n"
     out = capsys.readouterr().out
     assert "Repaired .env" in out and short not in out  # the key itself is never printed
+
+
+# ---------- Groq ----------
+from app.keycheck import groq_advise  # noqa: E402
+
+IDS = ["whisper-large-v3", "llama-3.3-70b-versatile", "openai/gpt-oss-120b"]
+
+
+def gtext(*a):
+    return "\n".join(groq_advise(*a))
+
+
+def test_groq_good_key():
+    out = gtext("gsk_" + "x" * 52, 200, IDS, "openai/gpt-oss-120b")
+    assert "PASS" in out and "MEDBRIDGE_MODEL" not in out
+
+
+def test_groq_good_key_but_model_missing_suggests_the_best_available():
+    out = gtext("gsk_" + "x" * 52, 200, IDS, "retired-model")
+    assert "PASS" in out and "MEDBRIDGE_MODEL=openai/gpt-oss-120b" in out
+
+
+def test_groq_rejected_key_gives_recreate_steps_and_prefix_hint():
+    out = gtext("Zq" + "x" * 40, 401, [], "m")
+    assert "FAIL" in out and "gsk_" in out and "console.groq.com/keys" in out and "set-key.sh" in out
+    assert "does not" in out  # prefix warning
+    assert "does not" not in gtext("gsk_" + "x" * 52, 401, [], "m").split("FAIL")[1].split("1.")[0]
+
+
+def test_groq_rate_limited_key_is_valid_and_offline_is_explained():
+    assert "VALID" in gtext("gsk_x", 429, [], "m")
+    assert "internet" in gtext("gsk_x", None, [], "m")
+
+
+def test_groq_report_never_contains_the_key():
+    key = "gsk_" + "TESTONLY" * 6
+    for status in (200, 401, 429, None, 500):
+        assert key not in gtext(key, status, IDS, "m")

@@ -26,7 +26,7 @@ app = FastAPI(title="MedBridge API", version="0.2.0")
 def _ai_busy(request: Request, exc: LLMUnavailable) -> JSONResponse:
     log.warning("AI service unavailable on %s: %s", request.url.path, exc)
     return JSONResponse(status_code=503, content={
-        "detail": "The AI service is busy or could not be reached (the free Gemini tier has limits). "
+        "detail": "The AI service is busy or could not be reached (free tiers have limits). "
                   "Please wait a minute and try again."})
 
 

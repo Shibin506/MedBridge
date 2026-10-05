@@ -163,7 +163,7 @@ def test_gemini_wins_when_both_keys_exist_unless_overridden(clean_env):
 def test_no_key_gives_a_helpful_message(clean_env):
     with pytest.raises(LLMError) as e:
         make_client()
-    assert "aistudio.google.com/apikey" in str(e.value) and ".env" in str(e.value)
+    assert "console.groq.com/keys" in str(e.value) and "aistudio.google.com/apikey" in str(e.value)
     clean_env.setenv("MEDBRIDGE_LLM", "gemini")
     with pytest.raises(LLMError):
         make_client()

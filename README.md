@@ -37,7 +37,7 @@ Then open http://localhost:3000. Press Ctrl+C to stop. The first run takes a cou
 cd backend
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt
-pytest                                   # 93 tests, the LLM is faked
+pytest                                   # 185 tests, the LLM is faked
 MEDBRIDGE_DEMO=1 uvicorn app.main:app --port 8000
 
 # terminal 2: frontend
@@ -49,15 +49,14 @@ npm run build && npm run start           # or: npm run dev   ->  http://localhos
 Open http://localhost:3000 and click one of the fictional examples. Demo mode answers from pre-written
 data, so it also works as a hackathon fallback if the Wi-Fi or the API fails.
 
-## Run it with the real AI (free Gemini key)
+## Run it with the real AI (free Groq key)
 
-1. Get a free key at https://aistudio.google.com/apikey
-2. In the project folder: `cp .env.example .env`, open `.env`, paste the key after `GEMINI_API_KEY=`
+1. Create a free key at https://console.groq.com/keys (it starts with `gsk_`) and click **Copy**.
+2. `./scripts/set-key.sh`, then paste it with Cmd+V and press Enter. It saves `.env` and tests the key.
 3. `./scripts/run-demo.sh --live`
 
-Details, Twilio setup and privacy notes: [docs/setup-keys.md](docs/setup-keys.md).
-**Free-tier AI services may use what you send to improve their products. Only use the fictional sample
-documents until you have a paid/private setup.**
+Gemini and Claude also work. Details, Twilio setup and privacy notes: [docs/setup-keys.md](docs/setup-keys.md).
+**Free-tier AI services may use what you send. Only use the fictional sample documents until you have a paid/private setup.**
 
 ## How it works
 
