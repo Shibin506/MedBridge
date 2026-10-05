@@ -11,9 +11,10 @@ Keep the Draft models free of numeric/length constraints; the structured-output
 feature of the API supports a limited subset of JSON Schema.
 """
 
+import re
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 # --------------------------------------------------------------------------
@@ -34,7 +35,7 @@ class MedicationDraft(BaseModel):
         "Use 'other' if it is stated but not in the list. null if the paper does not say."
     )
     frequency: str | None = Field(description="How often, e.g. 'once daily in the morning'. null if not stated.")
-    duration: str | None = Field(description="How long, e.g. 'for 7 days', 'until follow-up'. null if not stated.")
+    duration: str | None = Field(description="How long, WITHOUT a leading 'for': '7 days', 'until follow-up'. null if not stated.")
     purpose: str | None = Field(description="Why it is taken, only if the document says so. Otherwise null.")
     instructions: str | None = Field(description="Special instructions, e.g. 'take with food'. null if none.")
     status: Literal["new", "changed", "continue", "stop"] = Field(
@@ -42,6 +43,12 @@ class MedicationDraft(BaseModel):
         "'continue' unchanged home med, 'stop' patient must stop taking it."
     )
     source_quote: str = Field(description="Verbatim excerpt from the document that supports this item.")
+
+    @field_validator("duration")
+    @classmethod
+    def _drop_leading_for(cls, value: str | None) -> str | None:
+        # Models often write "for 35 days"; screens and the schedule add their own "for".
+        return re.sub(r"^\s*for\s+", "", value, flags=re.I) or None if value else value
 
 
 class FollowUpDraft(BaseModel):

@@ -57,7 +57,7 @@ export default function ConfirmStep({ extraction: ex, config, busy, error, onCha
       <h1>Check what we understood</h1>
       <p className="lead">
         {remaining > 0
-          ? <><strong>{remaining} item{remaining > 1 ? "s" : ""}</strong> need your check before we can make your plan.</>
+          ? <><strong>{remaining} item{remaining > 1 ? "s" : ""}</strong> {remaining > 1 ? "need" : "needs"} your check before we can make your plan.</>
           : <>Everything has been checked. Review the list once more, then make your plan.</>}
         {" "}Tap an item to see where it came from in your paper.
       </p>

@@ -241,3 +241,27 @@ def test_gallbladder_demo_sample_is_fully_grounded():
         for i in g if i.needs_confirmation
     ]
     assert len(ex.medications) == 9 and ex.unclear_items
+
+
+@pytest.mark.parametrize("given,expected", [
+    ("for 35 days after surgery", "35 days after surgery"),
+    ("For the first 2 weeks, then as needed", "the first 2 weeks, then as needed"),
+    ("  for  7 days ", "7 days "),
+    ("7 days", "7 days"),
+    ("until follow-up", "until follow-up"),
+    ("formula for success", "formula for success"),  # only a LEADING word "for" is removed
+    (None, None),
+])
+def test_duration_never_starts_with_for(given, expected):
+    from app.schemas import MedicationDraft
+    m = MedicationDraft(name="X", dose=None, route=None, frequency=None, duration=given, purpose=None,
+                        instructions=None, status="new", source_quote="X")
+    assert m.duration == expected
+
+
+def test_schedule_note_reads_naturally_after_cleaning():
+    from app.schedule import build_schedule
+    from app.schemas import Medication
+    m = Medication(name="Apixaban", dose="2.5 mg", route="oral", frequency="twice daily", duration="for 35 days after surgery",
+                   purpose=None, instructions=None, status="new", source_quote="x", grounded=True, needs_confirmation=False)
+    assert build_schedule([m]).slots[0].items[0].note == "for 35 days after surgery"
