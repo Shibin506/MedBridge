@@ -8,7 +8,8 @@ cd "$(dirname "$0")/.."
 
 LIVE=0
 [ "${1:-}" = "--live" ] && LIVE=1
-if [ -f .env ]; then set -a; . ./.env; set +a; fi   # keys live in .env (never committed)
+. ./scripts/load-env.sh
+load_env .env   # keys live in .env (never committed); read as plain text, never run as code
 
 if [ "$LIVE" = 1 ] && [ -z "${GEMINI_API_KEY:-}${GOOGLE_API_KEY:-}${ANTHROPIC_API_KEY:-}" ]; then
   echo "Live mode needs an AI key, and none was found."
