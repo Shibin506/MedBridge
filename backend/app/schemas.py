@@ -74,6 +74,7 @@ class _Verification(BaseModel):
     grounded: bool = False  # source_quote really appears in the document
     needs_confirmation: bool = True  # patient/clinician must check this item
     issues: list[str] = Field(default_factory=list)  # why it needs confirmation
+    patient_confirmed: bool = False  # set by the patient on the confirm screen (Phase 2)
 
 
 class Medication(MedicationDraft, _Verification):
@@ -102,3 +103,75 @@ class ExtractionResult(BaseModel):
     # Summary numbers the UI can show ("2 items need your check")
     total_items: int
     items_needing_confirmation: int
+    # The text we extracted from, so the UI can show "your paper" next to the data.
+    document_text: str = ""
+
+
+# --------------------------------------------------------------------------
+# Phase 2: the plain-language plan
+# --------------------------------------------------------------------------
+# What the LLM writes. Ids ("med_0", "fu_1", ...) are assigned by our code so we
+# can check that nothing was dropped or invented.
+class MedExplanationDraft(BaseModel):
+    id: str
+    how_to_take: str = Field(
+        description="Plain-language instructions built ONLY from the dose, route, frequency, "
+        "duration and instructions in the data. For status 'stop', say clearly to stop taking it."
+    )
+    why_taking: str | None = Field(
+        description="One plain sentence on what the medicine is for. Use the 'purpose' field if given; "
+        "otherwise a short, general description of what this kind of medicine is commonly used for, "
+        "or null if you are not sure."
+    )
+
+
+class TextItemDraft(BaseModel):
+    id: str
+    plain_text: str
+
+
+class PlanDraft(BaseModel):
+    summary: str = Field(description="2-3 short sentences: why the patient was in hospital (if stated) and what this plan covers.")
+    medications: list[MedExplanationDraft]
+    follow_ups: list[TextItemDraft]
+    warning_signs: list[TextItemDraft]
+    restrictions: list[TextItemDraft]
+    disclaimer: str = Field(description="The provided disclaimer sentence, translated into the target language.")
+
+
+class PlanRequest(BaseModel):
+    extraction: ExtractionResult
+    language: str = "en"
+    reading_level: Literal["simple", "standard"] = "simple"
+    acknowledged_unclear: bool = False  # patient has read the "please check" notes
+
+
+class PlanMedication(BaseModel):
+    id: str
+    status: Literal["new", "changed", "continue", "stop"]  # copied by code, never by the LLM
+    name: str  # copied by code
+    dose: str | None  # copied by code
+    frequency: str | None  # copied by code
+    how_to_take: str  # LLM
+    why_taking: str | None  # LLM
+    why_source: Literal["your_paper", "general_knowledge"] | None  # decided by code
+
+
+class PlanItem(BaseModel):
+    id: str
+    plain_text: str  # LLM
+    original: str  # what the paper data says, rendered by code (shown for transparency)
+    emergency: bool = False  # code: the item involves calling 911
+
+
+class PatientPlan(BaseModel):
+    language: str
+    language_name: str
+    reading_level: str
+    summary: str
+    medications: list[PlanMedication]
+    follow_ups: list[PlanItem]
+    warning_signs: list[PlanItem]
+    restrictions: list[PlanItem]
+    disclaimer: str
+    disclaimer_en: str

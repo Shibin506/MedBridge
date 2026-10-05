@@ -53,7 +53,7 @@ def verify(draft: ExtractionDraft, source_text: str) -> ExtractionResult:
         if grounded and normalize(m.name) not in normalize(m.source_quote):
             grounded = False
             issues.append("The drug name does not appear in its supporting quote.")
-        if m.dose is None or m.frequency is None:
+        if m.status != "stop" and (m.dose is None or m.frequency is None):
             issues.append("Dose or frequency is missing; check the paper.")
         meds.append(Medication(**m.model_dump(), grounded=grounded, needs_confirmation=bool(issues), issues=issues))
 
