@@ -186,3 +186,85 @@ class PatientPlan(BaseModel):
     restrictions: list[PlanItem]
     disclaimer: str
     disclaimer_en: str
+
+
+# --------------------------------------------------------------------------
+# Phase 3: daily schedule and safety check (all produced by code, not the LLM)
+# --------------------------------------------------------------------------
+class ScheduleItem(BaseModel):
+    name: str
+    dose: str | None
+    note: str | None  # instructions, duration, "dose changed", "with meals"
+    status: Literal["new", "changed", "continue", "stop"]
+
+
+class ScheduleSlot(BaseModel):
+    time: str  # "08:00" (24h, easy to sort and to use for SMS reminders later)
+    label: str  # "Morning"
+    items: list[ScheduleItem]
+
+
+class AsNeededItem(BaseModel):
+    name: str
+    dose: str | None
+    how_often: str | None  # the paper's own words
+    note: str | None
+
+
+class TaperStep(BaseModel):
+    when: str  # "Days 1-2"
+    dose: str  # "40 mg"
+
+
+class TaperPlan(BaseModel):
+    name: str
+    steps: list[TaperStep]
+    after: str | None  # "Then stop."
+    note: str | None
+
+
+class UnscheduledItem(BaseModel):
+    name: str
+    reason: str  # why we did not guess a time
+
+
+class DailySchedule(BaseModel):
+    slots: list[ScheduleSlot]
+    as_needed: list[AsNeededItem]
+    tapers: list[TaperPlan]
+    unscheduled: list[UnscheduledItem]
+
+
+class NormalizedMed(BaseModel):
+    name: str
+    ingredients: list[str]
+    source: Literal["local", "rxnorm", "name"]  # how sure we are: name = assumed from the written name
+
+
+class DuplicateFinding(BaseModel):
+    ingredient: str
+    medicines: list[str]
+    message: str
+
+
+class StoppedConflict(BaseModel):
+    ingredient: str
+    stopped: str
+    still_listed: str
+    message: str
+
+
+class InteractionHint(BaseModel):
+    drug_a: str
+    drug_b: str
+    source: str  # where the sentence comes from
+    excerpt: str  # verbatim sentence from that source
+
+
+class SafetyReport(BaseModel):
+    normalized: list[NormalizedMed]
+    duplicates: list[DuplicateFinding]
+    stopped_conflicts: list[StoppedConflict]
+    interactions: list[InteractionHint]
+    interaction_check: Literal["done", "unavailable", "not_run"]
+    notes: list[str]

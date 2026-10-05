@@ -147,7 +147,67 @@ HIP = dict(
     unclear_items=[],
 )
 
-_MARKERS = [("Furosemide", HEART), ("Augmentin", PNEUMONIA), ("Apixaban", HIP)]
+GALLBLADDER = dict(
+    diagnosis_summary="Laparoscopic gallbladder removal surgery.",
+    medications=[
+        _med("Tylenol", "500 mg (2 tablets)", "oral", "every 6 hours", None, "for pain", None, "new",
+             "Tylenol (acetaminophen) 500 mg - take 2 tablets by mouth every 6 hours for pain."),
+        _med("Percocet", "5/325 mg (1 tablet)", "oral", "every 6 hours ONLY IF your pain is severe", None, None,
+             "can cause drowsiness; do not drive", "new",
+             "Percocet (oxycodone/acetaminophen) 5/325 mg - take 1 tablet by mouth every 6 hours"),
+        _med("Motrin IB", "200 mg", None, "every 8 hours with food if you have swelling", None, None, None, "new",
+             "Motrin IB (ibuprofen) 200 mg - take 1 tablet every 8 hours with food if you have swelling."),
+        _med("Ondansetron", "4 mg", None, "every 8 hours only if you feel sick to your stomach", None, None, None, "new",
+             "Ondansetron 4 mg - take 1 tablet every 8 hours only if you feel sick to your stomach."),
+        _med("Docusate", "100 mg", None, "twice daily with meals", None, "to keep your bowels moving", None, "new",
+             "Docusate 100 mg - take 1 capsule twice daily with meals to keep your bowels moving."),
+        _med("Warfarin", "5 mg", None, "1 tablet at bedtime", None, None, "your clinic will check your INR blood test", "continue",
+             "Warfarin 5 mg: continue 1 tablet at bedtime."),
+        _med("Lisinopril", "10 mg", None, "every morning", None, None, None, "continue",
+             "Lisinopril 10 mg: continue 1 tablet every morning."),
+        _med("Advil", None, None, None, "until your surgeon says it is safe", None, None, "stop",
+             "Advil (ibuprofen) and aspirin until your surgeon says it is safe."),
+        _med("Aspirin", None, None, None, "until your surgeon says it is safe", None, None, "stop",
+             "aspirin until your surgeon says it is safe"),
+    ],
+    follow_ups=[
+        _fu("Surgeon visit", "Dr. Ibarra", "2 weeks after surgery", "Surgeon, Dr. Ibarra: 2 weeks after surgery."),
+        _fu("INR blood test", None, "in 3 days", "INR blood test: in 3 days."),
+    ],
+    warning_signs=[
+        _ws("chest pain, trouble breathing, or vomiting blood", "Call 911",
+            "CALL 911 if: chest pain, trouble breathing, or vomiting blood."),
+        _ws("fever over 101 F, yellow skin or eyes, severe belly pain, or bleeding from the wounds", "Call the office",
+            "CALL THE OFFICE if: fever over 101 F, yellow skin or eyes, severe belly pain, or bleeding from the wounds."),
+    ],
+    restrictions=[
+        _rs("wound_care", "You may shower after 48 hours; do not soak in a bath for 2 weeks",
+            "You may shower after 48 hours. Do not soak in a bath for 2 weeks."),
+        _rs("activity", "No lifting more than 10 pounds for 4 weeks", "No lifting more than 10 pounds for 4 weeks."),
+    ],
+    unclear_items=["The paper lists Motrin IB (ibuprofen) for swelling but also says to stop Advil (ibuprofen). "
+                   "Ask your surgeon which instruction is right."],
+)
+
+_MARKERS = [("Furosemide", HEART), ("Augmentin", PNEUMONIA), ("Apixaban", HIP), ("Percocet", GALLBLADDER)]
+
+
+class DemoLabelSource:
+    """Stand-in for FDA label text, so demo mode needs no internet.
+
+    The sentences below are WRITTEN FOR THE DEMO and are not real label text. They are tagged as such
+    in the UI via ``source_name``.
+    """
+
+    source_name = "Demo sample text (not a real FDA label)"
+    _TEXT = {
+        "warfarin": "Regular use of acetaminophen may increase the effect of warfarin, so your INR may need closer monitoring. "
+                    "Medicines such as ibuprofen can raise the risk of bleeding when taken with warfarin.",
+        "lisinopril": "Aspirin may reduce the blood-pressure-lowering effect of lisinopril in some patients.",
+    }
+
+    def interactions_text(self, ingredient: str):
+        return self._TEXT.get(ingredient)
 
 
 class DemoExtractionClient:

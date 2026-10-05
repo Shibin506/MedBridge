@@ -3,11 +3,13 @@ from pathlib import Path
 
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 
-from .demo import DemoExtractionClient, DemoPlanClient
+from .demo import DemoExtractionClient, DemoLabelSource, DemoPlanClient
 from .documents import UnreadableDocument, load_document
 from .extractor import Extractor
 from .plan import LANGUAGES, PlanError, PlanGenerator, readiness_problems
-from .schemas import ExtractionResult, PatientPlan, PlanRequest
+from .safety import SafetyChecker, build_live_checker
+from .schedule import build_schedule
+from .schemas import DailySchedule, ExtractionResult, PatientPlan, PlanRequest, SafetyReport
 
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 SAMPLES_DIR = Path(__file__).resolve().parent.parent / "samples"
@@ -25,6 +27,17 @@ def get_extractor() -> Extractor:
 
 def get_plan_generator() -> PlanGenerator:
     return PlanGenerator(client=DemoPlanClient() if demo_mode() else None)
+
+
+def get_safety_checker() -> SafetyChecker:
+    return SafetyChecker(labels=DemoLabelSource()) if demo_mode() else build_live_checker()
+
+
+def _require_ready(req: PlanRequest) -> None:
+    # Same gate as /plan: nothing is derived from items the patient has not checked.
+    problems = readiness_problems(req)
+    if problems:
+        raise HTTPException(status_code=409, detail={"problems": problems})
 
 
 @app.get("/health")
@@ -70,10 +83,20 @@ def extract(file: UploadFile = File(...), extractor: Extractor = Depends(get_ext
 @app.post("/plan", response_model=PatientPlan)
 def make_plan(req: PlanRequest, generator: PlanGenerator = Depends(get_plan_generator)) -> PatientPlan:
     # The gate lives in code: the UI can hide the button, but the server refuses anyway.
-    problems = readiness_problems(req)
-    if problems:
-        raise HTTPException(status_code=409, detail={"problems": problems})
+    _require_ready(req)
     try:
         return generator.generate(req)
     except PlanError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
+@app.post("/schedule", response_model=DailySchedule)
+def make_schedule(req: PlanRequest) -> DailySchedule:
+    _require_ready(req)
+    return build_schedule(req.extraction.medications)
+
+
+@app.post("/safety", response_model=SafetyReport)
+def safety_check(req: PlanRequest, checker: SafetyChecker = Depends(get_safety_checker)) -> SafetyReport:
+    _require_ready(req)
+    return checker.check(req.extraction)

@@ -231,3 +231,13 @@ def test_demo_plan_says_by_mouth_in_plain_words():
     ex = confirm_everything(extract_sample("01_heart_failure.txt"))
     draft = good_draft(ex)
     assert "by mouth" in draft.medications[0].how_to_take  # plan is plain even though the data says "oral"
+
+
+def test_gallbladder_demo_sample_is_fully_grounded():
+    ex = extract_sample("04_gallbladder_surgery.txt")
+    assert ex.items_needing_confirmation == 0, [
+        (i.source_quote, i.issues)
+        for g in (ex.medications, ex.follow_ups, ex.warning_signs, ex.restrictions)
+        for i in g if i.needs_confirmation
+    ]
+    assert len(ex.medications) == 9 and ex.unclear_items

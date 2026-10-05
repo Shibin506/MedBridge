@@ -1,0 +1,34 @@
+*** SYNTHETIC DOCUMENT - FICTIONAL PATIENT - FOR SOFTWARE TESTING ONLY ***
+
+HARBOR VIEW SURGICAL CENTER
+Discharge Instructions - Laparoscopic Gallbladder Removal
+
+Patient: Robert Chen          Age: 64          Ref: TEST-5120
+Surgery date: 09/22          Going home: 09/23
+Surgeon: Dr. L. Ibarra
+
+PAIN AND NAUSEA MEDICINES (new)
+1. Tylenol (acetaminophen) 500 mg - take 2 tablets by mouth every 6 hours for pain.
+2. Percocet (oxycodone/acetaminophen) 5/325 mg - take 1 tablet by mouth every 6 hours
+   ONLY IF your pain is severe. It can cause drowsiness. Do not drive.
+3. Motrin IB (ibuprofen) 200 mg - take 1 tablet every 8 hours with food if you have swelling.
+4. Ondansetron 4 mg - take 1 tablet every 8 hours only if you feel sick to your stomach.
+5. Docusate 100 mg - take 1 capsule twice daily with meals to keep your bowels moving.
+
+HOME MEDICINES
+- Warfarin 5 mg: continue 1 tablet at bedtime. Your clinic will check your INR blood test.
+- Lisinopril 10 mg: continue 1 tablet every morning.
+
+STOP taking
+- Advil (ibuprofen) and aspirin until your surgeon says it is safe.
+
+FOLLOW-UP
+- Surgeon, Dr. Ibarra: 2 weeks after surgery.
+- INR blood test: in 3 days.
+
+CARE AT HOME
+- You may shower after 48 hours. Do not soak in a bath for 2 weeks.
+- No lifting more than 10 pounds for 4 weeks.
+
+CALL 911 if: chest pain, trouble breathing, or vomiting blood.
+CALL THE OFFICE if: fever over 101 F, yellow skin or eyes, severe belly pain, or bleeding from the wounds.
