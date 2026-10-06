@@ -107,7 +107,7 @@ def test_openfda_parses_and_caches():
     src = OpenFdaLabelSource(fake)
     assert src.interactions_text("lisinopril") == "Aspirin may reduce effect. Avoid potassium."
     src.interactions_text("lisinopril")
-    assert len(calls) == 1 and calls[0]["search"] == 'openfda.generic_name:"lisinopril"'
+    assert len(calls) == 1 and calls[0]["search"] == 'openfda.generic_name:"lisinopril" AND _exists_:drug_interactions'
 
 
 def test_openfda_no_label_is_none_not_an_error():
@@ -242,3 +242,84 @@ def test_note_appears_when_the_name_lookup_failed_or_found_nothing():
     unknown = lambda url, params: {"idGroup": {"name": "x"}} if "rxcui.json" in url else {"approximateGroup": {"candidate": []}}  # noqa: E731
     r = SafetyChecker(resolver=RxNormResolver(unknown)).check(ex)
     assert any("were not found in the drug-name database" in n and "Ondansetron" in n for n in r.notes)
+
+
+# ---------- lookups that go wrong (what a real internet connection does) ----------
+from app.safety import HttpJson  # noqa: E402
+
+
+def test_openfda_asks_for_a_label_that_has_an_interactions_section_and_tries_a_second_field():
+    calls = []
+
+    def fake(url, params):
+        calls.append(params["search"])
+        if "generic_name" in params["search"]:
+            return None                                              # no match under the generic name
+        return {"results": [{"drug_interactions": ["Avoid X."]}]}
+
+    assert OpenFdaLabelSource(fake).interactions_text("zzz") == "Avoid X."
+    assert calls == ['openfda.generic_name:"zzz" AND _exists_:drug_interactions',
+                     'openfda.substance_name:"zzz" AND _exists_:drug_interactions']
+
+
+class FlakyLabels:
+    source_name = "Test labels"
+
+    def __init__(self, failing):
+        self.failing = set(failing)
+
+    def interactions_text(self, ingredient):
+        if ingredient in self.failing:
+            raise LookupUnavailable(f"api.fda.gov: HTTP 429 for {ingredient}")
+        return {"warfarin": "Regular use of acetaminophen may increase the effect of warfarin."}.get(ingredient)
+
+
+def test_one_failed_lookup_no_longer_discards_the_others():
+    ex = sample("04_gallbladder_surgery.txt")
+    r = SafetyChecker(labels=FlakyLabels({"lisinopril", "ondansetron"})).check(ex)
+    assert r.interaction_check == "partial"
+    assert any({h.drug_a, h.drug_b} == {"warfarin", "acetaminophen"} for h in r.interactions)   # the good lookups still count
+    assert any("only partly checked" in n and "lisinopril" in n and "ondansetron" in n for n in r.notes)
+
+
+def test_when_everything_fails_the_reason_is_shown():
+    ex = sample("04_gallbladder_surgery.txt")
+    every = {i for n in SafetyChecker().check(ex).normalized for i in n.ingredients}
+    r = SafetyChecker(labels=FlakyLabels(every)).check(ex)
+    assert r.interaction_check == "unavailable"
+    assert any("NOT checked" in n and "api.fda.gov: HTTP 429" in n for n in r.notes)
+
+
+def test_http_errors_name_the_host_and_the_status():
+    import httpx
+
+    def server(request):
+        return httpx.Response(429, json={})
+
+    get = HttpJson(client=httpx.Client(transport=httpx.MockTransport(server)))
+    with pytest.raises(LookupUnavailable, match=r"api\.fda\.gov: HTTP 429"):
+        get("https://api.fda.gov/drug/label.json", {"search": "x"})
+
+    def offline(request):
+        raise httpx.ConnectTimeout("timed out")
+
+    get = HttpJson(client=httpx.Client(transport=httpx.MockTransport(offline)))
+    with pytest.raises(LookupUnavailable, match=r"api\.fda\.gov: ConnectTimeout"):
+        get("https://api.fda.gov/drug/label.json", {"search": "x"})
+    assert HttpJson(client=httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(404, json={}))))("https://x/y", {}) is None
+
+
+# ---------- small wording fixes ----------
+def test_a_meal_instruction_is_not_said_twice():
+    from app.schedule import build_schedule
+    ex = sample("01_heart_failure.txt")
+    aspirin = next(m for m in ex.medications if m.name == "Aspirin")
+    aspirin.frequency, aspirin.instructions = "daily", "with food"
+    note = build_schedule([aspirin]).slots[0].items[0].note
+    assert note == "with food"                                         # not "with food; with meals"
+
+
+def test_the_clinic_line_shows_just_the_number():
+    from app.checkins import clinic_line
+    ex = sample("01_heart_failure.txt")
+    assert clinic_line(ex) == " The number on your paper: 555-0142 (Cardiology clinic visit)."

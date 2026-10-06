@@ -41,6 +41,9 @@ export default function SafetyPanel({ report }: { report: SafetyReport | null })
         <p>No duplicate medicines or conflicting instructions were found, and we found no warnings in the drug information we checked.</p>
       )}
       {findings === 0 && report.interaction_check === "not_run" && <p>No duplicate medicines or conflicting instructions were found.</p>}
+      {report.interaction_check === "partial" && (
+        <p className="finding"><strong>Interactions were only partly checked</strong>. Some medicines could not be looked up, so ask your pharmacist.</p>
+      )}
       {report.interaction_check === "unavailable" && (
         <p className="finding"><strong>Interactions were NOT checked</strong> because the drug-information service could not be reached.</p>
       )}

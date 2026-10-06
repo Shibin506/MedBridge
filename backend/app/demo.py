@@ -57,7 +57,7 @@ HEART = dict(
     ],
     follow_ups=[
         _fu("Cardiology clinic visit", "Dr. Okafor", "within 7 days", "Cardiology clinic (Dr. Okafor): within 7 days.",
-            contact="555-0142"),
+            contact="555-0142 (to schedule)"),
         _fu("Blood test (kidney function and potassium)", None, "in 1 week, before your clinic visit",
             "Blood test (kidney function and potassium): in 1 week"),
         _fu("Primary care visit", "Dr. Hale", "within 2 weeks", "Primary care (Dr. Hale): within 2 weeks."),
@@ -306,7 +306,7 @@ class DemoPlanClient:
         def fu(f):
             text = " ".join(p for p in [f["what"], f"with {f['with_whom']}" if f["with_whom"] else None, f["when"]] if p) + "."
             if f.get("contact"):
-                text += f" Call {f['contact']} to book."
+                text += f" Phone: {f['contact']}."
             return dict(id=f["id"], plain_text=note + text)
 
         def ws(w):

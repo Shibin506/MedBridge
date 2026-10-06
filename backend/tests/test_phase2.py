@@ -313,7 +313,7 @@ def test_heart_demo_captures_old_dose_phone_and_the_acetaminophen_limit():
     ex = extract_sample("01_heart_failure.txt")
     lis = next(m for m in ex.medications if m.name == "Lisinopril")
     assert lis.previous_dose == "20 mg" and not lis.needs_confirmation
-    assert ex.follow_ups[0].contact == "555-0142" and not ex.follow_ups[0].needs_confirmation
+    assert ex.follow_ups[0].contact == "555-0142 (to schedule)" and not ex.follow_ups[0].needs_confirmation
     cats = {r.category: r.instruction for r in ex.restrictions}
     assert "3,000 mg" in cats["medication_limit"] and "Weigh yourself" in cats["monitoring"]
 
@@ -323,7 +323,7 @@ def test_plan_must_keep_the_old_dose_and_the_phone_number():
     draft = good_draft(ex)
     assert check_plan(draft, ex) == []
     lis_idx = next(n for n, m in enumerate(ex.medications) if m.name == "Lisinopril")
-    assert "from 20 mg" in draft.medications[lis_idx].how_to_take and "555-0142" in draft.follow_ups[0].plain_text
+    assert "from 20 mg" in draft.medications[lis_idx].how_to_take and "555-0142 (to schedule)" in draft.follow_ups[0].plain_text
     # the model drops the old dose / the phone number -> caught
     draft.medications[lis_idx].how_to_take = "Take 10 mg once daily."
     draft.follow_ups[0].plain_text = "See the heart doctor within 7 days."

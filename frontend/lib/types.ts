@@ -74,7 +74,7 @@ export interface SafetyReport {
   duplicates: { ingredient: string; medicines: string[]; message: string }[];
   stopped_conflicts: { ingredient: string; stopped: string; still_listed: string; message: string }[];
   interactions: { drug_a: string; drug_b: string; source: string; excerpt: string }[];
-  interaction_check: "done" | "unavailable" | "not_run";
+  interaction_check: "done" | "partial" | "unavailable" | "not_run";
   notes: string[];
   daily_totals: { ingredient: string; total_mg: number; limit_mg: number; limit_source: string; message: string;
     contributors: { name: string; mg_per_day: number }[] }[];

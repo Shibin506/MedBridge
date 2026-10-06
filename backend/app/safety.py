@@ -8,8 +8,10 @@ The third check is deliberately modest. It only finds interactions that a label 
 and it quotes the label's own sentence. "No hint found" never means "no interaction"; the UI says so.
 """
 
+import logging
 import re
 from typing import Protocol
+from urllib.parse import urlparse
 
 import httpx
 
@@ -23,6 +25,8 @@ from .schemas import (
     SafetyReport,
     StoppedConflict,
 )
+
+log = logging.getLogger("uvicorn.error")
 
 MAX_LABEL_LOOKUPS = 12
 EXCERPT_CHARS = 320
@@ -46,18 +50,18 @@ class LabelSource(Protocol):
 class HttpJson:
     """Tiny JSON-over-HTTP helper with short timeouts. 404 -> None, other failures -> LookupUnavailable."""
 
-    def __init__(self, timeout: float = 5.0):
-        self._client = httpx.Client(timeout=timeout, headers={"User-Agent": "MedBridge/0.3"})
+    def __init__(self, timeout: float = 15.0, client: httpx.Client | None = None):
+        self._client = client or httpx.Client(timeout=timeout, headers={"User-Agent": "MedBridge/0.3"})
 
     def __call__(self, url: str, params: dict) -> dict | None:
         try:
             r = self._client.get(url, params=params)
         except httpx.HTTPError as exc:
-            raise LookupUnavailable(str(exc)) from exc
+            raise LookupUnavailable(f"{urlparse(url).netloc}: {type(exc).__name__} {exc}".strip()[:160]) from exc
         if r.status_code == 404:
             return None
         if r.status_code != 200:
-            raise LookupUnavailable(f"HTTP {r.status_code}")
+            raise LookupUnavailable(f"{urlparse(url).netloc}: HTTP {r.status_code}")
         try:
             return r.json()
         except ValueError as exc:
@@ -74,9 +78,14 @@ class OpenFdaLabelSource:
 
     def interactions_text(self, ingredient: str) -> str | None:
         if ingredient not in self._cache:
-            data = self._get(self.URL, {"search": f'openfda.generic_name:"{ingredient}"', "limit": 1})
-            results = (data or {}).get("results") or []
-            sections = results[0].get("drug_interactions") if results else None
+            sections = None
+            # Ask for a label that really has an interactions section (the first label found may be a repackager's without one).
+            for field in ("generic_name", "substance_name"):
+                data = self._get(self.URL, {"search": f'openfda.{field}:"{ingredient}" AND _exists_:drug_interactions', "limit": 1})
+                results = (data or {}).get("results") or []
+                sections = results[0].get("drug_interactions") if results else None
+                if sections:
+                    break
             self._cache[ingredient] = " ".join(sections) if sections else None
         return self._cache[ingredient]
 
@@ -160,11 +169,16 @@ class SafetyChecker:
         if len(ingredients) < 2:
             return [], "done", []
         texts: dict[str, str | None] = {}
-        try:
-            for ing in ingredients[:MAX_LABEL_LOOKUPS]:
+        failed: dict[str, str] = {}
+        for ing in ingredients[:MAX_LABEL_LOOKUPS]:
+            try:
                 texts[ing] = self.labels.interactions_text(ing)
-        except LookupUnavailable:
-            return [], "unavailable", ["We could not reach the drug-information service, so interactions were NOT checked. "
+            except LookupUnavailable as exc:
+                failed[ing] = str(exc)
+                log.warning("Drug-information lookup failed for %s: %s", ing, exc)
+        if failed and not texts:
+            reason = next(iter(failed.values()))
+            return [], "unavailable", [f"We could not reach the drug-information service, so interactions were NOT checked ({reason}). "
                                        "Ask your pharmacist."]
         hints: list[InteractionHint] = []
         seen: set[frozenset[str]] = set()
@@ -179,6 +193,9 @@ class SafetyChecker:
         notes = []
         if len(ingredients) > MAX_LABEL_LOOKUPS:
             notes.append(f"Only the first {MAX_LABEL_LOOKUPS} ingredients were checked for interactions.")
+        if failed:
+            notes.append("Interactions were only partly checked. These could not be looked up: " + ", ".join(failed) + ". Ask your pharmacist.")
+            return hints, "partial", notes
         return hints, "done", notes
 
 

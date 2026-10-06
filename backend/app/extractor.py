@@ -24,8 +24,8 @@ timing or purpose; use null instead.
   ("tablet", "capsule" = oral). Otherwise leave it null.
 - Showering, bathing, dressings and stitches are wound_care instructions.
 - If a medicine's dose changed, put the OLD dose in previous_dose.
-- Put a follow-up's phone number into its contact field as the number only, exactly as written (for example
-  "555-0142", not "Call 555-0142 to schedule").
+- Put a follow-up's phone number into its contact field exactly as written, with what it is for in brackets only if
+  the paper says (for example "555-0142 (to schedule)", not "Call 555-0142 to schedule").
 - Do not skip lines that give permission or a limit, such as "for pain you may use acetaminophen, no more than
   3,000 mg in one day": record them as a restriction with category medication_limit.
 - Things to measure or write down (daily weight, blood sugar, blood pressure) use category monitoring.

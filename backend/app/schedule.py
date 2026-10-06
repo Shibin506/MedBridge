@@ -56,6 +56,8 @@ def label_for(hhmm: str) -> str:
 
 
 def _note(m: Medication, extra: str | None = None) -> str | None:
+    if extra and re.search(r"\bwith (food|meals?)\b", (m.instructions or "").lower()):
+        extra = None                                                      # the paper's own words already say it
     duration = (m.duration if re.match(r"(?i)\s*(until|after|then)\b", m.duration or "") else f"for {m.duration}") if m.duration else None
     parts = [m.instructions, duration, extra,
              "dose changed" if m.status == "changed" else None]

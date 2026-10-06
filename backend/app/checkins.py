@@ -74,7 +74,8 @@ def timeline(ex: ExtractionResult) -> list[Event]:
 def clinic_line(ex: ExtractionResult) -> str:
     for f in ex.follow_ups:
         if f.contact:
-            return f" The number on your paper: {f.contact} ({f.what})."
+            phone = re.search(r"\+?\d[\d\s().-]{5,}\d", f.contact)
+            return f" The number on your paper: {phone.group(0).strip() if phone else f.contact} ({f.what})."
     return ""
 
 

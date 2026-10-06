@@ -73,8 +73,8 @@ class FollowUpDraft(BaseModel):
     when: str | None = Field(description="Timing exactly as written, e.g. 'within 7 days'. null if not stated.")
     contact: str | None = Field(
         default=None,
-        description="The phone number ONLY, exactly as written (e.g. '555-0142'), without words like 'Call'. "
-        "If there is no number but a way to book is given, a short phrase. null if the paper gives none.",
+        description="The phone number exactly as written, followed in brackets by what it is for ONLY if the paper says "
+        "(for example '555-0142 (to schedule)'). Do not start with 'Call'. null if the paper gives no number.",
     )
     source_quote: str = Field(description="Verbatim excerpt from the document that supports this item.")
 
@@ -317,6 +317,6 @@ class SafetyReport(BaseModel):
     duplicates: list[DuplicateFinding]
     stopped_conflicts: list[StoppedConflict]
     interactions: list[InteractionHint]
-    interaction_check: Literal["done", "unavailable", "not_run"]
+    interaction_check: Literal["done", "partial", "unavailable", "not_run"]
     notes: list[str]
     daily_totals: list[DailyTotalFinding] = Field(default_factory=list)

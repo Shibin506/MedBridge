@@ -59,7 +59,8 @@ Hard rules:
 - If a medicine to stop has a duration or condition (for example "until your surgeon says it is safe"), say it. Never make
   a temporary stop sound permanent.
 - If a medicine has previous_dose, say the dose changed and give both the old and the new dose.
-- If a follow-up has contact (a phone number), include it exactly as given.
+- If a follow-up has contact (a phone number), include it exactly as given. Say what it is for ONLY if the contact says so
+  (for example "to schedule"). Never invent a purpose such as "if you have questions".
 - Emergency items (anything saying to call 911) must keep their urgency and must include "911".
 - Return exactly one entry for every id you were given, using the same ids. Do not add or drop ids.
 - For why_taking: use the item's 'purpose' if it has one. If not, you may add ONE general sentence about
