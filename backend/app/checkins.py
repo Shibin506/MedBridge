@@ -333,7 +333,7 @@ class CheckInEngine:
             "adherence": {s: sum(a["status"] == s for a in adherence) for s in ("taken", "missed", "unanswered")},
             "next_event": nxt,
             "alert_rules": [{"sign": s.symptom, "action": s.action, "level": rf.URGENT if "911" in s.action else rf.SAME_DAY}
-                            for s in ex.warning_signs],
+                            for s in ex.warning_signs if rf.is_call_action(s.action)],
             "weight_rules": [f"{r.pounds:g} lb in {'1 day' if r.days == 1 else f'{r.days} days'}" for r in rf.weight_rules(ex)],
             "checkin_asks_weight": checkin_plan(ex).weight,
         }

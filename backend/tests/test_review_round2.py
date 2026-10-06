@@ -120,3 +120,28 @@ def test_the_api_returns_uncovered_lines(monkeypatch):
     text = (SAMPLES / "01_heart_failure.txt").read_bytes()
     body = TestClient(app).post("/extract", files={"file": ("a.txt", text, "text/plain")}).json()
     assert any("Fluid was removed" in line for line in body["uncovered_lines"])
+
+
+# ---- round 3: excerpt centred on the match, precautions are not alerts --------------------
+def test_interaction_excerpt_shows_the_matching_word():
+    from app.safety import EXCERPT_CHARS, _mention
+    filler = "Table 3: Drugs that Can Increase the Risk of Bleeding " + "Anticoagulants heparin enoxaparin " * 12
+    text = filler + "Non-steroidal Anti-inflammatory Agents such as ibuprofen, naproxen " + filler + "."
+    out = _mention(text, ["ibuprofen"])
+    assert out and "ibuprofen" in out
+    assert len(out) <= EXCERPT_CHARS + 2   # plus the two ellipses
+
+
+def test_short_sentence_is_unchanged():
+    from app.safety import _mention
+    assert _mention("Warfarin interacts with ibuprofen. Other.", ["ibuprofen"]) == "Warfarin interacts with ibuprofen."
+
+
+def test_do_not_drive_is_not_a_call_action():
+    from app import redflags as rf
+    assert rf.is_call_action("Call 911")
+    assert rf.is_call_action("Call your doctor")
+    assert rf.is_call_action("Go to the emergency room")
+    assert not rf.is_call_action("Do not drive")
+    assert not rf.is_call_action("Avoid alcohol")
+    assert not rf.is_call_action("")

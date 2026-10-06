@@ -125,9 +125,20 @@ def _tokens(text: str) -> tuple[str, ...]:
     return tuple(dict.fromkeys(w for w in re.findall(r"[a-z]+", text.lower()) if len(w) > 3 and w not in _STOP))
 
 
+_CALL_ACTION = re.compile(r"\b(call|phone|contact|911|emergency|er|go to|seek|see your|tell|notify|report|get help)\b", re.I)
+
+
+def is_call_action(action: str) -> bool:
+    """True when the paper's instruction sends the patient to a person ("Call 911", "Call your doctor").
+    "Do not drive" is a precaution, not a reason to alert the care team."""
+    return bool(_CALL_ACTION.search(action or "")) and not re.match(r"\s*(do not|don't|avoid|never)\b", action, re.I)
+
+
 def rules_from_paper(ex: ExtractionResult) -> list[Rule]:
     rules: list[Rule] = []
     for n, sign in enumerate(ex.warning_signs):
+        if not is_call_action(sign.action):
+            continue
         text = sign.symptom
         level = URGENT if re.search(r"911|emergency", f"{sign.action} {sign.symptom}", re.I) else SAME_DAY
         matched = [c for c in CONCEPTS if c.paper.search(text)]

@@ -166,3 +166,12 @@ def test_both_windows_exceeded_is_reported_once_with_the_stricter_window():
 ])
 def test_yes_no(text, yes, no):
     assert rf.says_yes(text) is yes and rf.says_no(text) is no
+
+
+def test_a_precaution_is_not_an_alert_rule():
+    ex = extraction()
+    ex.warning_signs[0].symptom = "drowsiness"
+    ex.warning_signs[0].action = "Do not drive"
+    rules = rf.rules_from_paper(ex)
+    assert not any(r.paper_symptom == "drowsiness" for r in rules)
+    assert all(r.action != "Do not drive" for r in rules)

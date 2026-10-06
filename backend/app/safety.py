@@ -97,6 +97,19 @@ def _sentences(text: str) -> list[str]:
     return [s.strip() for s in re.split(r"(?<=[.!?])\s+", re.sub(r"\s+", " ", text)) if s.strip()]
 
 
+def _excerpt(sentence: str, at: int) -> str:
+    """At most EXCERPT_CHARS of the sentence, centred on the match so the reader sees the word that triggered the hint."""
+    if len(sentence) <= EXCERPT_CHARS:
+        return sentence
+    start = max(0, min(at - EXCERPT_CHARS // 2, len(sentence) - EXCERPT_CHARS))
+    end = start + EXCERPT_CHARS
+    if start > 0:                                  # begin at a word boundary
+        start = sentence.find(" ", start) + 1 or start
+    if end < len(sentence):
+        end = sentence.rfind(" ", start, end) if sentence.rfind(" ", start, end) > at else end
+    return ("…" if start > 0 else "") + sentence[start:end].strip() + ("…" if end < len(sentence) else "")
+
+
 def _mention(text: str, terms: list[str]) -> str | None:
     """First sentence of ``text`` that names any of ``terms`` as a whole word."""
     pattern = re.compile(r"\b(?:" + "|".join(re.escape(t) for t in terms if len(t) >= 4) + r")\b", re.I) if any(len(t) >= 4 for t in terms) else None
@@ -104,7 +117,7 @@ def _mention(text: str, terms: list[str]) -> str | None:
         return None
     for sentence in _sentences(text):
         if pattern.search(sentence):
-            return sentence if len(sentence) <= EXCERPT_CHARS else sentence[: EXCERPT_CHARS - 1].rstrip() + "…"
+            return _excerpt(sentence, pattern.search(sentence).start())
     return None
 
 
