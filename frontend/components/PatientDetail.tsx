@@ -59,6 +59,7 @@ export default function PatientDetail({ data, status, onBack, onSeen, onOpenSimu
                 <div key={m.id} className={`bubble ${m.direction}`}>
                   <span className="when">{m.direction === "in" ? "Patient" : "MedBridge"} · {m.sim_label} · {ago(m.created_at)}</span>
                   {m.body.split("\n").map((line, i) => <p key={i}>{line}</p>)}
+                  {m.delivery === "failed" && <p className="not-delivered">⚠ Not delivered to the phone</p>}
                 </div>
               ))}
             </div>

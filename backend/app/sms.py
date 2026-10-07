@@ -38,6 +38,7 @@ def twilio_configured() -> bool:
 
 # What Twilio's error numbers mean, in plain words. Only the common ones; unknown numbers are shown as Twilio words them.
 ERROR_HELP = {
+    "572006": "Trial Twilio accounts can only send Twilio's ready-made templates, not MedBridge's own wording. Upgrade the Twilio account to send your own text, or use the phone simulator.",
     "21608": "This is a trial account and the phone number is not verified. Add it under Phone Numbers > Manage > Verified Caller IDs.",
     "21610": "That phone replied STOP to your Twilio number, so Twilio blocks every text to it. Text START to the Twilio number from that phone.",
     "21211": "Twilio says the destination phone number is not valid. Use the full number, like +15551234567.",

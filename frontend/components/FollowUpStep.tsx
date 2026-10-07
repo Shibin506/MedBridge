@@ -50,6 +50,7 @@ export default function FollowUpStep({ initial, onBack, backLabel = "← Back to
               <div key={m.id} className={`bubble ${m.direction}`}>
                 <span className="when">{m.sim_label}</span>
                 {m.body.split("\n").map((line, i) => <p key={i}>{line}</p>)}
+                {m.delivery === "failed" && <p className="not-delivered">⚠ Not delivered to the phone</p>}
               </div>
             ))}
           </div>

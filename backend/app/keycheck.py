@@ -136,7 +136,9 @@ def twilio_advise(status: int | None, account: dict, number_found: bool | None, 
     elif number_found:
         lines.append(f"The number {from_number} belongs to your account.")
     if kind == "trial":
-        lines += ["This is a TRIAL account: it can only text phone numbers you have verified",
+        lines += ["!! This is a TRIAL account, and Twilio currently lets trial accounts send ONLY its own ready-made templates",
+                  "   (like \"Appointment reminder\"). MedBridge's own wording is refused (Twilio error 572006). Upgrading the account lifts this.",
+                  "It can also only text phone numbers you have verified",
                   "(Console > Phone Numbers > Manage > Verified Caller IDs), and messages start with a trial notice.",
                   "US carriers may also block texts from a new number until it is registered (Twilio error 30034).",
                   "If texts do not arrive, use the phone simulator for your demo."]

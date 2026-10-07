@@ -169,3 +169,21 @@ def test_a_stop_reply_at_twilio_level_is_explained():
     assert "START" in explain_error(21610)
     assert "registered" in explain_error("30034")
     assert explain_error("99999", "fallback") == "fallback"
+
+
+def test_a_text_that_could_not_be_sent_is_marked_not_delivered(tmp_path):
+    from app.checkins import CheckInEngine
+    from app.demo_patients import confirmed_extraction
+    from app.store import Store
+    store = Store(tmp_path / "d.sqlite3")
+    pid = store.create_patient(name="T", phone="+15551230000", mode="sms", consent=True, language="en",
+                               extraction_json=confirmed_extraction("01_heart_failure.txt").model_dump_json())
+
+    def refuse(to, body):
+        raise RuntimeError("Twilio error 572006: trial accounts can only use predefined templates")
+    CheckInEngine(store, sender=refuse).start(pid)
+    msgs = store.messages(pid)
+    assert [m["delivery"] for m in msgs] == ["failed"]
+    assert "572006" in store.alerts(pid)[0]["detail"]
+    CheckInEngine(store, sender=lambda to, body: None).advance(pid)
+    assert [m["delivery"] for m in store.messages(pid)] == ["failed", ""]

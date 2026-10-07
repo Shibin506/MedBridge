@@ -51,7 +51,7 @@ export interface AppConfig { demo: boolean; languages: Record<string, string>; s
 
 export interface FollowUpState {
   patient: { id: string; name: string | null; mode: "simulator" | "sms"; opted_out: boolean; phone_last4: string; day: number };
-  messages: { id: number; direction: "in" | "out"; body: string; kind: string; sim_label: string }[];
+  messages: { id: number; direction: "in" | "out"; body: string; kind: string; sim_label: string; delivery?: string }[];
   alerts: { id: number; level: "urgent" | "same_day" | "review"; title: string; detail: string; day: number; acknowledged: boolean }[];
   weights: { day: number; pounds: number }[];
   adherence: { taken: number; missed: number; unanswered: number };

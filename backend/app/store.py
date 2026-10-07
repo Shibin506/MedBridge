@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS patients (
 );
 CREATE TABLE IF NOT EXISTS messages (
   id INTEGER PRIMARY KEY AUTOINCREMENT, patient_id TEXT NOT NULL, direction TEXT NOT NULL, body TEXT NOT NULL,
-  kind TEXT NOT NULL, sim_label TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL
+  kind TEXT NOT NULL, sim_label TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, delivery TEXT NOT NULL DEFAULT ''
 );
 CREATE TABLE IF NOT EXISTS alerts (
   id INTEGER PRIMARY KEY AUTOINCREMENT, patient_id TEXT NOT NULL, level TEXT NOT NULL, title TEXT NOT NULL,
@@ -65,6 +65,8 @@ class Store:
                 for col, ddl in (("acknowledged_at", "TEXT"), ("ack_note", "TEXT NOT NULL DEFAULT ''"), ("ack_by", "TEXT NOT NULL DEFAULT ''")):
                     if col not in have:
                         conn.execute(f"ALTER TABLE alerts ADD COLUMN {col} {ddl}")
+                if "delivery" not in {r["name"] for r in conn.execute("PRAGMA table_info(messages)")}:
+                    conn.execute("ALTER TABLE messages ADD COLUMN delivery TEXT NOT NULL DEFAULT ''")
                 have = {r["name"] for r in conn.execute("PRAGMA table_info(patients)")}
                 for col in ("timezone", "last_event"):
                     if col not in have:
@@ -144,8 +146,12 @@ class Store:
             out[direction] = rows[0] if rows else None
         return out
 
+    def mark_delivery(self, message_id: int, status: str) -> None:
+        """'' = no problem known, 'failed' = the phone company or Twilio refused it."""
+        self._run("UPDATE messages SET delivery = ? WHERE id = ?", (status, message_id))
+
     def messages(self, pid: str) -> list[dict[str, Any]]:
-        return self._all("SELECT id, direction, body, kind, sim_label, created_at FROM messages WHERE patient_id = ? ORDER BY id", (pid,))
+        return self._all("SELECT id, direction, body, kind, sim_label, created_at, delivery FROM messages WHERE patient_id = ? ORDER BY id", (pid,))
 
     # ---- alerts ----------------------------------------------------------
     def add_alert(self, pid: str, level: str, title: str, detail: str, rule_id: str, day: int) -> int | None:

@@ -142,3 +142,5 @@ table.team td svg { color: var(--brand); vertical-align: middle; }
 
 .topbar { flex-wrap: wrap; }
 @media (max-width: 560px) { .tag { display: none; } }
+
+.bubble .not-delivered { font-size: .75rem; font-weight: 700; color: var(--danger); background: var(--danger-soft); padding: 2px 8px; border-radius: 6px; margin-top: 4px; }

@@ -99,11 +99,12 @@ class CheckInEngine:
         return f"Day {p['sim_day'] + 1}" + (f", {clock(time)}" if time else "")
 
     def _send(self, p: dict[str, Any], body: str, kind: str, time: str | None = None) -> None:
-        self.store.add_message(p["id"], "out", body, kind, self._label(p, time))
+        message_id = self.store.add_message(p["id"], "out", body, kind, self._label(p, time))
         if self.sender and p["mode"] == "sms" and p["phone"] and not p["opted_out"]:
             try:
                 self.sender(p["phone"], body)
             except Exception as exc:  # a text that never arrived must not disappear silently
+                self.store.mark_delivery(message_id, "failed")
                 self.store.add_alert(p["id"], rf.REVIEW, "A text message could not be delivered", str(exc)[:240],
                                      "delivery_failed", p["sim_day"])
 

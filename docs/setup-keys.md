@@ -52,7 +52,8 @@ What Twilio calls things: the **Account SID** (starts with `AC`), the **Auth Tok
 7. For replies to reach the app, follow "Real texts with Twilio" in [phase-4.md](phase-4.md) (a tunnel such as `ngrok http 8000`, `MEDBRIDGE_PUBLIC_URL`, and the webhook address).
 
 Things to know:
-- **Trial limits:** messages start with a "trial account" notice and go only to verified numbers.
+- **Trial limits:** messages go only to verified numbers, and (since Twilio's 2026 trial rules) a trial account can only send Twilio's **ready-made templates**,
+  not your own wording. MedBridge's reminders are its own wording, so real texts need the account **upgraded** (error 572006 means this). The phone simulator needs nothing.
 - **US carrier registration:** US carriers block texts from unregistered ordinary numbers (Twilio errors 30034 / 30032).
   Trial accounts may hit this. Twilio's toll-free verification or A2P 10DLC registration fixes it but takes days.
   For a hackathon, the **phone simulator** means the demo never depends on carriers.
