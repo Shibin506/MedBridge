@@ -49,12 +49,12 @@ export default function Home() {
     finally { setBusy(false); }
   }
 
-  async function startCheckins(choice: { mode: "simulator" | "sms"; phone?: string; consent: boolean }) {
+  async function startCheckins(choice: { mode: "simulator" | "sms"; phone?: string; consent: boolean; name?: string }) {
     if (!extraction || !opts) return;
     setBusy(true); setFollowUpError(null);
     try {
       setFollowUp(await createPatient({
-        plan: { extraction, ...opts }, mode: choice.mode, phone: choice.phone, consent_sms: choice.consent,
+        plan: { extraction, ...opts }, mode: choice.mode, phone: choice.phone, consent_sms: choice.consent, name: choice.name,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       }));
     } catch (e) { setFollowUpError((e as Error).message); } finally { setBusy(false); }

@@ -22,10 +22,11 @@ function ItemList({ items }: { items: PlanItem[] }) {
 interface Props {
   plan: PatientPlan; extras: Extras | null; config: AppConfig; busy: boolean; error: string | null;
   onBack: () => void; onLanguage: (code: string) => void;
-  onStartCheckins: (c: { mode: "simulator" | "sms"; phone?: string; consent: boolean }) => void; checkinError: string | null;
+  onStartCheckins: (c: { mode: "simulator" | "sms"; phone?: string; consent: boolean; name?: string }) => void; checkinError: string | null;
 }
 
 export default function PlanStep({ plan, extras, config, busy, error, onBack, onLanguage, onStartCheckins, checkinError }: Props) {
+  const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [consent, setConsent] = useState(false);
   const stopped = plan.medications.filter((m) => m.status === "stop");
@@ -96,8 +97,13 @@ export default function PlanStep({ plan, extras, config, busy, error, onBack, on
         <h2>Reminders and daily check-ins</h2>
         <p>MedBridge can text you when it is time for each medicine, and check in each morning. If you report a warning sign from your
           paper, it tells you what your paper says to do and alerts your care team. <strong>Texting is not for emergencies: call 911.</strong></p>
+        <div className="form">
+          <label>Patient’s name (optional, so the care team can tell patients apart)
+            <input value={name} maxLength={80} onChange={(e) => setName(e.target.value)} autoComplete="name" />
+          </label>
+        </div>
         <div className="row">
-          <button className="btn primary" disabled={busy} onClick={() => onStartCheckins({ mode: "simulator", consent: false })}>
+          <button className="btn primary" disabled={busy} onClick={() => onStartCheckins({ mode: "simulator", consent: false, name: name.trim() || undefined })}>
             Try it on the phone simulator
           </button>
         </div>
@@ -110,7 +116,7 @@ export default function PlanStep({ plan, extras, config, busy, error, onBack, on
               <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
               I agree to receive text messages from MedBridge. Message and data rates may apply. I can reply STOP at any time.
             </label>
-            <button className="btn" disabled={busy || !consent || !phone.trim()} onClick={() => onStartCheckins({ mode: "sms", phone, consent })}>
+            <button className="btn" disabled={busy || !consent || !phone.trim()} onClick={() => onStartCheckins({ mode: "sms", phone, consent, name: name.trim() || undefined })}>
               Text my phone
             </button>
           </div>
