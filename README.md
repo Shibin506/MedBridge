@@ -37,7 +37,7 @@ Then open http://localhost:3000. Press Ctrl+C to stop. The first run takes a cou
 cd backend
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt
-pytest                                   # 417 tests, the LLM is faked
+pytest                                   # 439 tests, the LLM is faked
 MEDBRIDGE_DEMO=1 uvicorn app.main:app --port 8000
 
 # terminal 2: frontend

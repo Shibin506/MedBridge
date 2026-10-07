@@ -20,7 +20,8 @@ CREATE TABLE IF NOT EXISTS patients (
   id TEXT PRIMARY KEY, name TEXT, phone TEXT, mode TEXT NOT NULL, consent INTEGER NOT NULL DEFAULT 0,
   opted_out INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL,
   sim_day INTEGER NOT NULL DEFAULT 0, sim_cursor INTEGER NOT NULL DEFAULT 0,
-  awaiting TEXT NOT NULL DEFAULT '', language TEXT NOT NULL DEFAULT 'en', extraction TEXT NOT NULL
+  awaiting TEXT NOT NULL DEFAULT '', language TEXT NOT NULL DEFAULT 'en', extraction TEXT NOT NULL,
+  timezone TEXT NOT NULL DEFAULT '', last_event TEXT NOT NULL DEFAULT ''
 );
 CREATE TABLE IF NOT EXISTS messages (
   id INTEGER PRIMARY KEY AUTOINCREMENT, patient_id TEXT NOT NULL, direction TEXT NOT NULL, body TEXT NOT NULL,
@@ -64,6 +65,10 @@ class Store:
                 for col, ddl in (("acknowledged_at", "TEXT"), ("ack_note", "TEXT NOT NULL DEFAULT ''"), ("ack_by", "TEXT NOT NULL DEFAULT ''")):
                     if col not in have:
                         conn.execute(f"ALTER TABLE alerts ADD COLUMN {col} {ddl}")
+                have = {r["name"] for r in conn.execute("PRAGMA table_info(patients)")}
+                for col in ("timezone", "last_event"):
+                    if col not in have:
+                        conn.execute(f"ALTER TABLE patients ADD COLUMN {col} TEXT NOT NULL DEFAULT ''")
         finally:
             conn.close()
 
@@ -90,10 +95,10 @@ class Store:
 
     # ---- patients -----------------------------------------------------
     def create_patient(self, *, name: str | None, phone: str | None, mode: str, consent: bool, language: str, extraction_json: str,
-                       pid: str | None = None) -> str:
+                       pid: str | None = None, timezone: str = "") -> str:
         pid = pid or uuid.uuid4().hex[:12]
-        self._run("INSERT INTO patients (id, name, phone, mode, consent, created_at, language, extraction) VALUES (?,?,?,?,?,?,?,?)",
-                  (pid, name, phone, mode, int(consent), self.clock(), language, extraction_json))
+        self._run("INSERT INTO patients (id, name, phone, mode, consent, created_at, language, extraction, timezone) VALUES (?,?,?,?,?,?,?,?,?)",
+                  (pid, name, phone, mode, int(consent), self.clock(), language, extraction_json, timezone))
         return pid
 
     def get_patient(self, pid: str) -> dict[str, Any] | None:
@@ -118,7 +123,7 @@ class Store:
         return rows[0] if rows else None
 
     def update_patient(self, pid: str, **fields: Any) -> None:
-        allowed = {"opted_out", "sim_day", "sim_cursor", "awaiting"}
+        allowed = {"opted_out", "sim_day", "sim_cursor", "awaiting", "last_event"}
         bad = set(fields) - allowed
         if bad:
             raise ValueError(f"cannot update {bad}")

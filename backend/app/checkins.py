@@ -140,6 +140,11 @@ class CheckInEngine:
         self.store.update_patient(pid, sim_day=day, sim_cursor=cursor + 1, awaiting=awaiting_next)
         self._send(p, body, ev.kind, ev.time)
 
+    def send_event(self, pid: str, day: int, index: int) -> None:
+        """Send one specific text of the day's timeline (used by the timer: 'day 2, the 3rd text'). Same wording as the simulator."""
+        self.store.update_patient(pid, sim_day=day, sim_cursor=index)
+        self.advance(pid)
+
     @staticmethod
     def _reminder_text(ev: Event) -> str:
         lines = []

@@ -59,6 +59,8 @@ export interface FollowUpState {
   alert_rules: { sign: string; action: string; level: string }[];
   weight_rules: string[];
   checkin_asks_weight: boolean;
+  scheduled_next?: { at: string; label: string } | null;   // real texts only: when the next text goes out by itself
+  timezone?: string;
 }
 
 export interface ScheduleItem { name: string; dose: string | null; note: string | null; status: Status }

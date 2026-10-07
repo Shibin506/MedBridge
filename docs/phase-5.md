@@ -67,5 +67,5 @@ With no patients yet, **Load 6 example patients** fills the page. They are made 
 
 ## Not built yet
 
-Real-time reminders on a timer (today the simulator's "Next text" moves time forward), per-nurse accounts and assignment, escalation if an
+Per-nurse accounts and assignment, escalation if an
 emergency alert sits unseen, and a way for the care team to text a patient back.

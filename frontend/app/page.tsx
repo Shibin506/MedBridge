@@ -55,6 +55,7 @@ export default function Home() {
     try {
       setFollowUp(await createPatient({
         plan: { extraction, ...opts }, mode: choice.mode, phone: choice.phone, consent_sms: choice.consent,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       }));
     } catch (e) { setFollowUpError((e as Error).message); } finally { setBusy(false); }
   }

@@ -56,11 +56,18 @@ export default function FollowUpStep({ initial, onBack, backLabel = "← Back to
 
           <div className="row">
             {state.next_event && !state.patient.opted_out && (
-              <button className="btn primary" disabled={busy} onClick={() => run(() => advance(pid))}>
-                Next text: {state.next_event.label}
+              <button className={`btn ${isSim ? "primary" : ""}`} disabled={busy} onClick={() => run(() => advance(pid))}>
+                {isSim ? "Next text" : "Send now (for testing)"}: {state.next_event.label}
               </button>
             )}
           </div>
+          {!isSim && !state.patient.opted_out && (
+            <p className="small">
+              {state.scheduled_next
+                ? <>Texts go out by themselves at the right time{state.timezone ? ` (${state.timezone})` : ""}. Next one: <strong>{state.scheduled_next.label}</strong>.</>
+                : "No more scheduled texts."}
+            </p>
+          )}
           <div className="row chips" aria-label="Quick replies">
             {chips.map((c) => (
               <button key={c} className="btn chip" disabled={busy} onClick={() => run(() => sendReply(pid, c.replace(/^Yes, I took them$/, "yes").replace(/^No, I couldn't$/, "no")))}>

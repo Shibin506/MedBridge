@@ -157,3 +157,31 @@ def test_webhook_from_an_unknown_number_is_ignored_politely(api, twilio):
     form = {"From": "+15550001111", "Body": "hello"}
     r = api.post("/sms/incoming", data=form, headers={"X-Twilio-Signature": sign(form)})
     assert r.status_code == 200 and twilio == []
+
+
+# ---------- timer (phase 5b) ----------
+def test_real_text_patient_keeps_a_time_zone_and_shows_the_next_scheduled_text(api, twilio):
+    r = api.post("/patients", json={"plan": plan_body(api), "mode": "sms", "phone": "+15551234567", "consent_sms": True,
+                                    "timezone": "America/Chicago"})
+    state = r.json()
+    assert state["timezone"] == "America/Chicago" and state["scheduled_next"]["label"]
+    assert api.get(f"/patients/{state['patient']['id']}").json()["timezone"] == "America/Chicago"
+
+
+def test_unknown_time_zone_falls_back_instead_of_failing(api, twilio, monkeypatch):
+    monkeypatch.delenv("MEDBRIDGE_TZ", raising=False)
+    state = api.post("/patients", json={"plan": plan_body(api), "mode": "sms", "phone": "+15551234567", "consent_sms": True,
+                                        "timezone": "Mars/Olympus"}).json()
+    assert state["timezone"] == "America/Los_Angeles"
+
+
+def test_simulator_patient_has_no_scheduled_text(api):
+    state = create(api).json()
+    assert state["scheduled_next"] is None
+
+
+def test_the_server_starts_and_stops_with_the_scheduler_running(monkeypatch, tmp_path):
+    monkeypatch.setenv("MEDBRIDGE_DB", str(tmp_path / "life.sqlite3"))
+    monkeypatch.setenv("MEDBRIDGE_SCHEDULER", "on")
+    with TestClient(main.app) as c:
+        assert c.get("/health").json() == {"status": "ok"}

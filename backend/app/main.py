@@ -1,6 +1,9 @@
+import asyncio
 import hmac
 import logging
 import os
+from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
 
@@ -9,7 +12,7 @@ from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
 from . import dashboard as team_dashboard
-from . import demo_patients
+from . import demo_patients, scheduler
 from .checkins import CheckInEngine
 from .demo import DemoExtractionClient, DemoLabelSource, DemoPlanClient
 from .documents import UnreadableDocument, load_document
@@ -27,7 +30,26 @@ SAMPLES_DIR = Path(__file__).resolve().parent.parent / "samples"
 
 log = logging.getLogger("uvicorn.error")  # shows up in the same terminal as the server
 
-app = FastAPI(title="MedBridge API", version="0.2.0")
+async def _scheduler_loop() -> None:
+    while True:
+        try:
+            await asyncio.to_thread(lambda: scheduler.tick(Store(), lambda s: CheckInEngine(s, sender=build_sender())))
+        except Exception:
+            log.exception("Scheduler pass failed")
+        await asyncio.sleep(scheduler.TICK_SECONDS)
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    task = asyncio.create_task(_scheduler_loop()) if scheduler.enabled() else None
+    if task:
+        log.info("Reminder scheduler is running (a pass every %d s; real-text patients only).", scheduler.TICK_SECONDS)
+    yield
+    if task:
+        task.cancel()
+
+
+app = FastAPI(title="MedBridge API", version="0.2.0", lifespan=lifespan)
 
 
 @app.exception_handler(LLMUnavailable)
@@ -158,6 +180,7 @@ class CreatePatient(BaseModel):
     phone: str | None = Field(default=None, max_length=30)
     mode: Literal["simulator", "sms"] = "simulator"
     consent_sms: bool = False
+    timezone: str = Field(default="", max_length=64)   # the browser's zone, e.g. "America/Chicago"; decides when 8:00 AM is
 
 
 class ReplyBody(BaseModel):
@@ -177,9 +200,23 @@ def create_patient(body: CreatePatient, store: Store = Depends(get_store), engin
         if not body.consent_sms:
             raise HTTPException(status_code=409, detail="We can only text you if you agree to receive text messages.")
     pid = store.create_patient(name=body.name, phone=phone, mode=body.mode, consent=body.consent_sms,
-                               language=body.plan.language, extraction_json=body.plan.extraction.model_dump_json())
+                               language=body.plan.language, extraction_json=body.plan.extraction.model_dump_json(),
+                               timezone=scheduler.resolve_timezone(body.timezone))
     engine.start(pid)
-    return engine.state(pid)
+    return _state(engine, pid)
+
+
+def _state(engine: CheckInEngine, pid: str) -> dict:
+    """The patient's screen data, plus (for real texts) when the next text will go out by itself."""
+    state = engine.state(pid)
+    p = engine.store.get_patient(pid) or {}
+    state["scheduled_next"] = None
+    state["timezone"] = p.get("timezone") or ""
+    if p.get("mode") == "sms" and not p.get("opted_out"):
+        nxt = scheduler.next_due(p, datetime.now(timezone.utc))
+        if nxt:
+            state["scheduled_next"] = {"at": nxt[0].isoformat(), "label": nxt[1]}
+    return state
 
 
 def _known(engine: CheckInEngine, pid: str) -> None:
@@ -190,21 +227,21 @@ def _known(engine: CheckInEngine, pid: str) -> None:
 @app.get("/patients/{pid}")
 def get_patient_state(pid: str, engine: CheckInEngine = Depends(get_engine)) -> dict:
     _known(engine, pid)
-    return engine.state(pid)
+    return _state(engine, pid)
 
 
 @app.post("/patients/{pid}/advance")
 def advance(pid: str, engine: CheckInEngine = Depends(get_engine)) -> dict:
     _known(engine, pid)
     engine.advance(pid)
-    return engine.state(pid)
+    return _state(engine, pid)
 
 
 @app.post("/patients/{pid}/reply")
 def patient_reply(pid: str, body: ReplyBody, engine: CheckInEngine = Depends(get_engine)) -> dict:
     _known(engine, pid)
     engine.reply(pid, body.text)
-    return engine.state(pid)
+    return _state(engine, pid)
 
 
 class AckBody(BaseModel):

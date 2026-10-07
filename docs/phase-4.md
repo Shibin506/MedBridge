@@ -52,6 +52,20 @@ confirmed plan --POST /patients--> patient saved (SQLite)
 `./scripts/run-demo.sh`, upload a fictional paper, confirm, make the plan, then **Try it on the phone simulator**.
 Press **Next text** to move through the day. Try: `172 and no symptoms`, then next day `176 and my ankles are swollen`, then `I have chest pain`.
 
+## Reminder timer (real texts)
+
+For **real texts** a timer (`app/scheduler.py`) sends each reminder and the morning check-in by itself, at the right time **in the patient's own time zone**.
+The phone simulator is still stepped by hand with "Next text".
+
+- Every 30 seconds the server checks each real-text patient: which of today's texts are due and not yet sent? What was sent is remembered in the database, so a restart never repeats a text.
+- Only texts that became due **after the patient signed up** are sent. Signing up at 3 PM does not fire the 8 AM reminder.
+- **Late texts are skipped, not sent.** If the server was off and a reminder is more than 90 minutes late, it is not sent (a "take your medicine" text hours late can mislead). The care team gets a "please read" alert, so a missed reminder is never silent.
+- The time zone comes from the browser when the patient signs up (`America/Chicago`...). If it is missing or invalid the server uses `MEDBRIDGE_TZ`, else `America/Los_Angeles`. Clock changes (daylight saving) keep 8:00 AM at 8:00 AM.
+- Patients who replied STOP, or never agreed to texts, are never texted.
+- One patient's error never stops everyone else's texts.
+- The server must be **running** for texts to go out: if your laptop sleeps, reminders do not send. `MEDBRIDGE_SCHEDULER=off` turns the timer off.
+- On a real patient's screen, "Send now (for testing)" sends the next text immediately, which is handy for a demo.
+
 ## Real texts with Twilio
 
 1. `./scripts/set-key.sh twilio` (Account SID, Auth Token, your Twilio number). It saves `.env` and tests the credentials.
