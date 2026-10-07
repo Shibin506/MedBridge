@@ -121,3 +121,51 @@ def test_valid_signature_accepts_the_real_one_and_rejects_everything_else():
     assert not valid_signature("tok", "https://x.example/sms/incoming", {**params, "Body": "no"}, good)  # tampered body
     assert not valid_signature("tok", "https://x.example/sms/incoming", params, None)
     assert not valid_signature("tok", "https://x.example/sms/incoming", params, "")
+
+
+# ---------- delivery status and plain-English errors ----------
+def _sender(handler):
+    import httpx
+    from app.sms import TwilioSender
+    return TwilioSender("ACsid", "secret-token", "+15559990000", client=httpx.Client(transport=httpx.MockTransport(handler)))
+
+
+def test_send_returns_twilios_message_id():
+    import httpx
+    s = _sender(lambda req: httpx.Response(201, json={"sid": "SM123", "status": "queued"}))
+    assert s.send("+15551230000", "hi") == "SM123"
+
+
+def test_status_reports_failure_with_the_error_code():
+    import httpx
+    s = _sender(lambda req: httpx.Response(200, json={"status": "undelivered", "error_code": 30034, "error_message": "Unregistered number"}))
+    assert s.status("SM123") == ("undelivered", "30034", "Unregistered number")
+
+
+def test_status_when_twilio_is_unreachable_is_an_error_not_a_pass():
+    import httpx
+    import pytest
+    from app.sms import SmsError
+
+    def boom(req):
+        raise httpx.ConnectError("no network")
+    with pytest.raises(SmsError):
+        _sender(boom).status("SM123")
+
+
+def test_unverified_trial_number_gets_a_specific_explanation_and_no_token():
+    import httpx
+    import pytest
+    from app.sms import SmsError
+    s = _sender(lambda req: httpx.Response(400, json={"code": 21608, "message": "unverified secret-token"}))
+    with pytest.raises(SmsError) as e:
+        s.send("+15551230000", "hi")
+    text = str(e.value)
+    assert "21608" in text and "Verified Caller IDs" in text and "secret-token" not in text
+
+
+def test_a_stop_reply_at_twilio_level_is_explained():
+    from app.sms import explain_error
+    assert "START" in explain_error(21610)
+    assert "registered" in explain_error("30034")
+    assert explain_error("99999", "fallback") == "fallback"

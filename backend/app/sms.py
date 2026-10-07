@@ -36,30 +36,75 @@ def twilio_configured() -> bool:
     return all(os.environ.get(k) for k in ("TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_FROM_NUMBER"))
 
 
+# What Twilio's error numbers mean, in plain words. Only the common ones; unknown numbers are shown as Twilio words them.
+ERROR_HELP = {
+    "21608": "This is a trial account and the phone number is not verified. Add it under Phone Numbers > Manage > Verified Caller IDs.",
+    "21610": "That phone replied STOP to your Twilio number, so Twilio blocks every text to it. Text START to the Twilio number from that phone.",
+    "21211": "Twilio says the destination phone number is not valid. Use the full number, like +15551234567.",
+    "21614": "Twilio says the destination is not a mobile number that can receive texts.",
+    "21606": "The number MedBridge sends FROM is not a text-capable number in this Twilio account. Check TWILIO_FROM_NUMBER.",
+    "21659": "The number MedBridge sends FROM is not a Twilio number of yours. Check TWILIO_FROM_NUMBER.",
+    "21660": "The number MedBridge sends FROM does not belong to this account. Check TWILIO_FROM_NUMBER.",
+    "21612": "Twilio cannot send from this number to that country or number type.",
+    "30034": "US carriers block texts from US numbers that are not registered yet (A2P 10DLC). Registration takes days. Use the phone simulator for the demo, or a toll-free number once verified.",
+    "30032": "Toll-free numbers must be verified before they can text. Verification takes days. Use the phone simulator for the demo.",
+    "30007": "The carrier filtered the message as spam. Registration of the number usually fixes this.",
+    "30006": "The destination is a landline or cannot receive texts.",
+    "30005": "The destination number is unknown or inactive.",
+    "30003": "The phone was unreachable (off, no signal). Twilio gave up.",
+    "30008": "Unknown delivery error from the carrier. Try again, or use the phone simulator.",
+    "63038": "The daily message limit of this Twilio account was reached. Try again tomorrow.",
+    "20003": "Twilio rejected the Account SID or Auth Token. Run ./scripts/set-key.sh twilio again.",
+}
+FINAL_STATUSES = {"delivered", "undelivered", "failed", "canceled"}
+
+
+def explain_error(code: object, fallback: str = "") -> str:
+    return ERROR_HELP.get(str(code), fallback)
+
+
 class TwilioSender:
     API = "https://api.twilio.com/2010-04-01/Accounts/{sid}/Messages.json"
+    ONE = "https://api.twilio.com/2010-04-01/Accounts/{sid}/Messages/{msid}.json"
 
     def __init__(self, sid: str, token: str, from_number: str, client: httpx.Client | None = None):
         self._sid, self._token, self._from = sid, token, from_number
         self._http = client or httpx.Client(timeout=20)
 
-    def __call__(self, to: str, body: str) -> None:
+    def send(self, to: str, body: str) -> str:
+        """Hands one text to Twilio and returns its id. "Accepted" here only means queued: use ``status`` to see whether it arrived."""
         try:
             r = self._http.post(self.API.format(sid=self._sid), auth=(self._sid, self._token),
                                 data={"To": to, "From": self._from, "Body": body[:1500]})
         except httpx.HTTPError as exc:
             raise SmsError(f"Could not reach Twilio ({type(exc).__name__}).") from exc
         if r.status_code // 100 == 2:
-            return
+            try:
+                return str(r.json().get("sid", ""))
+            except ValueError:
+                return ""
         try:
             err = r.json()
-            detail = f"Twilio error {err.get('code', r.status_code)}: {err.get('message', '')}"
+            code = err.get("code", r.status_code)
+            detail = f"Twilio error {code}: {err.get('message', '')}"
         except ValueError:
-            detail = f"Twilio error {r.status_code}"
-        hint = ""
-        if str(err.get("code") if isinstance(err, dict) else "") in {"30034", "30032", "30007"} or r.status_code == 400:
-            hint = " (US carriers block texts from unregistered numbers; see docs/setup-keys.md)"
-        raise SmsError((detail + hint).replace(self._token, "<token>")[:300])
+            code, detail = r.status_code, f"Twilio error {r.status_code}"
+        hint = explain_error(code)
+        raise SmsError((detail + (f" ({hint})" if hint else "")).replace(self._token, "<token>")[:420])
+
+    def __call__(self, to: str, body: str) -> None:
+        self.send(to, body)
+
+    def status(self, message_id: str) -> tuple[str, str, str]:
+        """(status, error code, error message) of a text already handed to Twilio. Status is queued, sent, delivered, undelivered or failed."""
+        try:
+            r = self._http.get(self.ONE.format(sid=self._sid, msid=message_id), auth=(self._sid, self._token))
+            data = r.json() if r.status_code == 200 else {}
+        except (httpx.HTTPError, ValueError) as exc:
+            raise SmsError(f"Could not reach Twilio ({type(exc).__name__}).") from exc
+        if r.status_code != 200:
+            raise SmsError(f"Twilio error {r.status_code} while checking the text.")
+        return str(data.get("status", "")), str(data.get("error_code") or ""), str(data.get("error_message") or "")
 
 
 def build_sender() -> TwilioSender | None:
