@@ -16,7 +16,7 @@ when something looks wrong.
 | 2 | Confirm screen + plain-language plan (+ translation), demo mode | **done** |
 | 3 | Daily schedule + safety check (duplicates, stopped-but-listed, label-based interaction hints) | **done** (live lookups need a quick check, see docs/phase-3.md) |
 | 4 | Daily text check-ins (phone simulator + real Twilio), red-flag rules from the patient's own paper, care-team alerts, acetaminophen daily-total check | **done** (real texts need a quick live check, see docs/phase-4.md) |
-| 5 | Caregiver/nurse dashboard, adherence timeline | |
+| 5 | Care-team dashboard: all patients ranked by urgency, alert inbox with notes (audit trail), patient pages, example patients, optional access code | **done** (docs/phase-5.md) |
 | 6 | Polish, demo video | |
 
 ## Quickest way (no API key needed: demo mode)
@@ -37,7 +37,7 @@ Then open http://localhost:3000. Press Ctrl+C to stop. The first run takes a cou
 cd backend
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt
-pytest                                   # 386 tests, the LLM is faked
+pytest                                   # 417 tests, the LLM is faked
 MEDBRIDGE_DEMO=1 uvicorn app.main:app --port 8000
 
 # terminal 2: frontend
@@ -64,3 +64,4 @@ Gemini and Claude also work. Details, Twilio setup and privacy notes: [docs/setu
 - [docs/phase-2.md](docs/phase-2.md): confirm screen -> plain-language plan
 - [docs/phase-3.md](docs/phase-3.md): daily schedule and safety check
 - [docs/phase-4.md](docs/phase-4.md): text check-ins, alerts, and the phone simulator
+- [docs/phase-5.md](docs/phase-5.md): the care-team dashboard

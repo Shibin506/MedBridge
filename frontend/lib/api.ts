@@ -1,7 +1,23 @@
-import type { AppConfig, DailySchedule, ExtractionResult, FollowUpState, PatientPlan, SafetyReport } from "./types";
+import type { AppConfig, DailySchedule, DashboardData, ExtractionResult, FollowUpState, PatientDetailData, PatientPlan, SafetyReport } from "./types";
+
+/** The care-team pages answered "access code needed". */
+export class AuthError extends Error {}
+
+const TEAM_KEY = "medbridge_team_key";
+export function getTeamKey(): string {
+  try { return sessionStorage.getItem(TEAM_KEY) ?? ""; } catch { return ""; }
+}
+export function setTeamKey(key: string): void {
+  try { key ? sessionStorage.setItem(TEAM_KEY, key) : sessionStorage.removeItem(TEAM_KEY); } catch { /* private window: the code is simply asked for again */ }
+}
+function teamHeaders(json = false): Record<string, string> {
+  const key = getTeamKey();
+  return { ...(json ? { "Content-Type": "application/json" } : {}), ...(key ? { "X-Team-Key": key } : {}) };
+}
 
 async function parse<T>(res: Response): Promise<T> {
   if (res.ok) return (await res.json()) as T;
+  if (res.status === 401) throw new AuthError("The care-team access code is missing or wrong.");
   let message = `Something went wrong (${res.status}).`;
   try {
     const body = await res.json();
@@ -45,4 +61,13 @@ export const advance = (id: string) => fetch(`/api/patients/${id}/advance`, { me
 export const sendReply = (id: string, text: string) =>
   fetch(`/api/patients/${id}/reply`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) })
     .then((r) => parse<FollowUpState>(r));
-export const ackAlert = (alertId: number) => fetch(`/api/alerts/${alertId}/ack`, { method: "POST" }).then((r) => parse<{ ok: boolean }>(r));
+export const ackAlert = (alertId: number, note = "", by = "") =>
+  fetch(`/api/alerts/${alertId}/ack`, { method: "POST", headers: teamHeaders(true), body: JSON.stringify({ note, by }) })
+    .then((r) => parse<{ ok: boolean }>(r));
+
+// ---- care team (phase 5)
+export const getDashboard = () => fetch("/api/dashboard", { headers: teamHeaders() }).then((r) => parse<DashboardData>(r));
+export const getPatientDetail = (id: string) =>
+  fetch(`/api/dashboard/patients/${encodeURIComponent(id)}`, { headers: teamHeaders() }).then((r) => parse<PatientDetailData>(r));
+export const loadExamples = () => fetch("/api/demo/patients", { method: "POST", headers: teamHeaders() }).then((r) => parse<{ loaded: number }>(r));
+export const removeExamples = () => fetch("/api/demo/patients", { method: "DELETE", headers: teamHeaders() }).then((r) => parse<{ removed: number }>(r));

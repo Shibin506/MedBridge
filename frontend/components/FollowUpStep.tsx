@@ -2,34 +2,11 @@
 import { useEffect, useRef, useState } from "react";
 import { ackAlert, advance, getFollowUp, sendReply } from "@/lib/api";
 import type { FollowUpState } from "@/lib/types";
+import WeightChart from "./WeightChart";
 
 const LEVEL_LABEL: Record<string, string> = { urgent: "EMERGENCY", same_day: "CALL TODAY", review: "PLEASE READ" };
 
-function WeightChart({ points }: { points: { day: number; pounds: number }[] }) {
-  if (points.length === 0) return <p className="small">No weights yet. They appear after the first check-in.</p>;
-  const w = 300, h = 110, pad = 26;
-  const xs = points.map((p) => p.day), ys = points.map((p) => p.pounds);
-  const x0 = Math.min(...xs), x1 = Math.max(...xs, x0 + 1);
-  const y0 = Math.min(...ys) - 2, y1 = Math.max(...ys) + 2;
-  const sx = (d: number) => pad + ((d - x0) / (x1 - x0)) * (w - 2 * pad);
-  const sy = (v: number) => h - pad - ((v - y0) / (y1 - y0)) * (h - 2 * pad);
-  return (
-    <>
-      <svg viewBox={`0 0 ${w} ${h}`} role="img" aria-label={`Weight by day: ${points.map((p) => `day ${p.day} ${p.pounds} pounds`).join(", ")}`} className="chart">
-        <polyline fill="none" stroke="var(--brand)" strokeWidth="2.5" points={points.map((p) => `${sx(p.day)},${sy(p.pounds)}`).join(" ")} />
-        {points.map((p) => (
-          <g key={p.day}>
-            <circle cx={sx(p.day)} cy={sy(p.pounds)} r="4" fill="var(--brand)" />
-            <text x={sx(p.day)} y={sy(p.pounds) - 8} textAnchor="middle" fontSize="10" fill="currentColor">{p.pounds}</text>
-            <text x={sx(p.day)} y={h - 8} textAnchor="middle" fontSize="10" fill="currentColor">D{p.day}</text>
-          </g>
-        ))}
-      </svg>
-    </>
-  );
-}
-
-export default function FollowUpStep({ initial, onBack }: { initial: FollowUpState; onBack: () => void }) {
+export default function FollowUpStep({ initial, onBack, backLabel = "← Back to my plan" }: { initial: FollowUpState; onBack: () => void; backLabel?: string }) {
   const [state, setState] = useState(initial);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -57,7 +34,7 @@ export default function FollowUpStep({ initial, onBack }: { initial: FollowUpSta
   const open = state.alerts.filter((a) => !a.acknowledged);
   return (
     <div>
-      <button className="btn quiet no-print" onClick={onBack}>← Back to my plan</button>
+      <button className="btn quiet no-print" onClick={onBack}>{backLabel}</button>
       <h1>Daily check-ins</h1>
       <p className="lead">
         {isSim

@@ -1,3 +1,4 @@
+import hmac
 import logging
 import os
 from pathlib import Path
@@ -7,6 +8,8 @@ from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
+from . import dashboard as team_dashboard
+from . import demo_patients
 from .checkins import CheckInEngine
 from .demo import DemoExtractionClient, DemoLabelSource, DemoPlanClient
 from .documents import UnreadableDocument, load_document
@@ -64,6 +67,18 @@ def _require_ready(req: PlanRequest) -> None:
         raise HTTPException(status_code=409, detail={"problems": problems})
 
 
+def team_key() -> str:
+    return os.environ.get("MEDBRIDGE_TEAM_KEY", "")
+
+
+def require_team(request: Request) -> None:
+    """The care-team pages show every patient. If MEDBRIDGE_TEAM_KEY is set, they need that access code.
+    (Not set = open, which is only fine on your own computer.)"""
+    key = team_key()
+    if key and not hmac.compare_digest(request.headers.get("X-Team-Key", "").encode(), key.encode()):
+        raise HTTPException(status_code=401, detail="Care-team access code needed.")
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
@@ -72,7 +87,7 @@ def health() -> dict[str, str]:
 @app.get("/config")
 def config() -> dict:
     """What the UI needs to know at startup."""
-    return {"demo": demo_mode(), "languages": LANGUAGES, "sms": twilio_configured()}
+    return {"demo": demo_mode(), "languages": LANGUAGES, "sms": twilio_configured(), "team_key_required": bool(team_key())}
 
 
 @app.get("/samples")
@@ -192,11 +207,43 @@ def patient_reply(pid: str, body: ReplyBody, engine: CheckInEngine = Depends(get
     return engine.state(pid)
 
 
-@app.post("/alerts/{alert_id}/ack")
-def acknowledge_alert(alert_id: int, store: Store = Depends(get_store)) -> dict[str, bool]:
-    if not store.acknowledge(alert_id):
+class AckBody(BaseModel):
+    note: str = Field(default="", max_length=500)   # what was done, e.g. "Called, advised to keep leg raised"
+    by: str = Field(default="", max_length=80)      # who did it
+
+
+@app.post("/alerts/{alert_id}/ack", dependencies=[Depends(require_team)])
+def acknowledge_alert(alert_id: int, body: AckBody | None = None, store: Store = Depends(get_store)) -> dict[str, bool]:
+    body = body or AckBody()
+    if not store.acknowledge(alert_id, body.note, body.by):
         raise HTTPException(status_code=404, detail="Unknown alert.")
     return {"ok": True}
+
+
+# ----------------------------------------------------------------------------------------------------------
+# Phase 5: the care-team dashboard (all patients, one screen)
+# ----------------------------------------------------------------------------------------------------------
+@app.get("/dashboard", dependencies=[Depends(require_team)])
+def get_dashboard(store: Store = Depends(get_store)) -> dict:
+    return team_dashboard.overview(store)
+
+
+@app.get("/dashboard/patients/{pid}", dependencies=[Depends(require_team)])
+def get_dashboard_patient(pid: str, engine: CheckInEngine = Depends(get_engine)) -> dict:
+    _known(engine, pid)
+    return team_dashboard.patient_detail(engine, pid)
+
+
+@app.post("/demo/patients", dependencies=[Depends(require_team)])
+def load_example_patients(store: Store = Depends(get_store)) -> dict:
+    """Replaces the fictional example patients with fresh ones (see demo_patients.py). Real patients are never touched."""
+    ids = demo_patients.seed(store)
+    return {"loaded": len(ids)}
+
+
+@app.delete("/demo/patients", dependencies=[Depends(require_team)])
+def remove_example_patients(store: Store = Depends(get_store)) -> dict:
+    return {"removed": demo_patients.reset(store)}
 
 
 @app.post("/sms/incoming")

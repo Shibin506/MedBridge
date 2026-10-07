@@ -4,13 +4,16 @@ import ConfirmStep from "@/components/ConfirmStep";
 import PlanStep from "@/components/PlanStep";
 import UploadStep from "@/components/UploadStep";
 import FollowUpStep from "@/components/FollowUpStep";
+import CareTeamDashboard from "@/components/CareTeamDashboard";
 import { createPatient, getConfig, getSafety, getSchedule, makePlan } from "@/lib/api";
 import type { AppConfig, Extras, ExtractionResult, FollowUpState, PatientPlan } from "@/lib/types";
 
 type Opts = { language: string; reading_level: string; acknowledged_unclear: boolean; acknowledged_review: boolean };
 
 export default function Home() {
-  const [config, setConfig] = useState<AppConfig>({ demo: false, languages: { en: "English" }, sms: false });
+  const [config, setConfig] = useState<AppConfig>({ demo: false, languages: { en: "English" }, sms: false, team_key_required: false });
+  const [view, setView] = useState<"patient" | "team">("patient");
+  const [teamSim, setTeamSim] = useState<FollowUpState | null>(null);   // a pretend phone opened from the care-team page
   const [followUp, setFollowUp] = useState<FollowUpState | null>(null);
   const [followUpError, setFollowUpError] = useState<string | null>(null);
   const [extraction, setExtraction] = useState<ExtractionResult | null>(null);
@@ -21,6 +24,11 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => { getConfig().then(setConfig).catch(() => undefined); }, []);
+  useEffect(() => { if (window.location.hash === "#team") setView("team"); }, []);
+  function show(next: "patient" | "team") {
+    setView(next); setTeamSim(null);
+    window.history.replaceState(null, "", next === "team" ? "#team" : window.location.pathname);
+  }
 
   async function generate(next: Opts) {
     if (!extraction) return;
@@ -58,6 +66,10 @@ export default function Home() {
       <header className="topbar no-print">
         <span className="brand">MedBridge</span>
         <span className="tag">Plain-language help after the hospital</span>
+        <nav className="nav" aria-label="Who is using MedBridge">
+          <button className={`navbtn ${view === "patient" ? "on" : ""}`} aria-current={view === "patient" ? "page" : undefined} onClick={() => show("patient")}>Patient</button>
+          <button className={`navbtn ${view === "team" ? "on" : ""}`} aria-current={view === "team" ? "page" : undefined} onClick={() => show("team")}>Care team</button>
+        </nav>
       </header>
       {config.demo && (
         <p className="demo-banner no-print">
@@ -66,17 +78,23 @@ export default function Home() {
         </p>
       )}
       <main>
-        {!extraction && <UploadStep onDone={setExtraction} />}
-        {extraction && !plan && !followUp && (
-          <ConfirmStep extraction={extraction} config={config} busy={busy} error={error}
-            onChange={setExtraction} onBack={reset} onMakePlan={generate} />
-        )}
-        {followUp && <FollowUpStep initial={followUp} onBack={() => setFollowUp(null)} />}
-        {extraction && plan && !followUp && (
-          <PlanStep plan={plan} extras={extras} config={config} busy={busy} error={error}
-            onBack={() => { setPlan(null); setExtras(null); setError(null); }}
-            onStartCheckins={startCheckins} checkinError={followUpError}
-            onLanguage={(language) => opts && void generate({ ...opts, language })} />
+        {view === "team" && !teamSim && <CareTeamDashboard config={config} onOpenSimulator={setTeamSim} />}
+        {view === "team" && teamSim && <FollowUpStep initial={teamSim} backLabel="← Back to the care-team page" onBack={() => setTeamSim(null)} />}
+        {view === "patient" && (
+          <>
+            {!extraction && <UploadStep onDone={setExtraction} />}
+            {extraction && !plan && !followUp && (
+              <ConfirmStep extraction={extraction} config={config} busy={busy} error={error}
+                onChange={setExtraction} onBack={reset} onMakePlan={generate} />
+            )}
+            {followUp && <FollowUpStep initial={followUp} onBack={() => setFollowUp(null)} />}
+            {extraction && plan && !followUp && (
+              <PlanStep plan={plan} extras={extras} config={config} busy={busy} error={error}
+                onBack={() => { setPlan(null); setExtras(null); setError(null); }}
+                onStartCheckins={startCheckins} checkinError={followUpError}
+                onLanguage={(language) => opts && void generate({ ...opts, language })} />
+            )}
+          </>
         )}
       </main>
     </>

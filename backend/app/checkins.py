@@ -273,8 +273,11 @@ class CheckInEngine:
             flags.append(rf.Flag(rf.REVIEW, "review", "Message needs a person to read it",
                                  f"Patient wrote: “{text[:200]}”. No rule matched, so a person should read it.", ""))
 
-        for f in flags:
-            self.store.add_alert(pid, f.level, f.title, f.detail, f.rule_id, day)
+        raised: set[tuple[str, str]] = set()
+        for f in flags:                                           # one message about one warning sign is one alert, not one per word in it
+            if (f.level, f.title) not in raised:
+                raised.add((f.level, f.title))
+                self.store.add_alert(pid, f.level, f.title, f.detail, f.rule_id, day)
         self._reply(p, self._compose(ex, flags, notes, handled, text), "reply")
 
     def _reply(self, p: dict[str, Any], body: str, kind: str) -> None:

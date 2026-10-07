@@ -11,7 +11,7 @@ import sqlite3
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 DEFAULT_PATH = Path(__file__).resolve().parent.parent / "data" / "medbridge.sqlite3"
 
@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS messages (
 CREATE TABLE IF NOT EXISTS alerts (
   id INTEGER PRIMARY KEY AUTOINCREMENT, patient_id TEXT NOT NULL, level TEXT NOT NULL, title TEXT NOT NULL,
   detail TEXT NOT NULL, rule_id TEXT NOT NULL, day INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL,
-  acknowledged INTEGER NOT NULL DEFAULT 0
+  acknowledged INTEGER NOT NULL DEFAULT 0, acknowledged_at TEXT, ack_note TEXT NOT NULL DEFAULT '', ack_by TEXT NOT NULL DEFAULT ''
 );
 CREATE TABLE IF NOT EXISTS weights (
   patient_id TEXT NOT NULL, day INTEGER NOT NULL, pounds REAL NOT NULL, PRIMARY KEY (patient_id, day)
@@ -51,11 +51,21 @@ def db_path() -> Path:
 
 
 class Store:
-    def __init__(self, path: Path | str | None = None):
+    def __init__(self, path: Path | str | None = None, clock: Callable[[], str] | None = None):
         self.path = Path(path) if path else db_path()
+        self.clock = clock or _now          # tests and the demo data can supply their own time
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        with self._conn() as c:
-            c.executescript(SCHEMA)
+        conn = self._conn()
+        try:
+            with conn:
+                conn.executescript(SCHEMA)
+                # A database made by an earlier phase has no acknowledgement columns: add them, keep the rows.
+                have = {r["name"] for r in conn.execute("PRAGMA table_info(alerts)")}
+                for col, ddl in (("acknowledged_at", "TEXT"), ("ack_note", "TEXT NOT NULL DEFAULT ''"), ("ack_by", "TEXT NOT NULL DEFAULT ''")):
+                    if col not in have:
+                        conn.execute(f"ALTER TABLE alerts ADD COLUMN {col} {ddl}")
+        finally:
+            conn.close()
 
     def _conn(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.path, timeout=10)
@@ -79,15 +89,29 @@ class Store:
             conn.close()
 
     # ---- patients -----------------------------------------------------
-    def create_patient(self, *, name: str | None, phone: str | None, mode: str, consent: bool, language: str, extraction_json: str) -> str:
-        pid = uuid.uuid4().hex[:12]
+    def create_patient(self, *, name: str | None, phone: str | None, mode: str, consent: bool, language: str, extraction_json: str,
+                       pid: str | None = None) -> str:
+        pid = pid or uuid.uuid4().hex[:12]
         self._run("INSERT INTO patients (id, name, phone, mode, consent, created_at, language, extraction) VALUES (?,?,?,?,?,?,?,?)",
-                  (pid, name, phone, mode, int(consent), _now(), language, extraction_json))
+                  (pid, name, phone, mode, int(consent), self.clock(), language, extraction_json))
         return pid
 
     def get_patient(self, pid: str) -> dict[str, Any] | None:
         rows = self._all("SELECT * FROM patients WHERE id = ?", (pid,))
         return rows[0] if rows else None
+
+    def all_patients(self) -> list[dict[str, Any]]:
+        return self._all("SELECT * FROM patients ORDER BY created_at, id")
+
+    def delete_patients(self, id_prefix: str) -> int:
+        """Removes every patient whose id starts with ``id_prefix`` and everything stored about them (used for the example patients)."""
+        ids = [r["id"] for r in self._all("SELECT id FROM patients WHERE id LIKE ?", (id_prefix.replace("%", "") + "%",))]
+        for table in ("messages", "alerts", "weights", "adherence"):
+            for pid in ids:
+                self._run(f"DELETE FROM {table} WHERE patient_id = ?", (pid,))
+        for pid in ids:
+            self._run("DELETE FROM patients WHERE id = ?", (pid,))
+        return len(ids)
 
     def find_by_phone(self, phone: str) -> dict[str, Any] | None:
         rows = self._all("SELECT * FROM patients WHERE phone = ? AND mode = 'sms' ORDER BY created_at DESC LIMIT 1", (phone,))
@@ -104,7 +128,16 @@ class Store:
     # ---- messages -------------------------------------------------------
     def add_message(self, pid: str, direction: str, body: str, kind: str, sim_label: str = "") -> int:
         return self._run("INSERT INTO messages (patient_id, direction, body, kind, sim_label, created_at) VALUES (?,?,?,?,?,?)",
-                         (pid, direction, body, kind, sim_label, _now()))
+                         (pid, direction, body, kind, sim_label, self.clock()))
+
+    def last_messages(self, pid: str) -> dict[str, dict[str, Any] | None]:
+        """The newest text in each direction, so the dashboard can show 'last heard from the patient'."""
+        out: dict[str, dict[str, Any] | None] = {}
+        for direction in ("in", "out"):
+            rows = self._all("SELECT direction, body, kind, sim_label, created_at FROM messages WHERE patient_id = ? AND direction = ? "
+                             "ORDER BY id DESC LIMIT 1", (pid, direction))
+            out[direction] = rows[0] if rows else None
+        return out
 
     def messages(self, pid: str) -> list[dict[str, Any]]:
         return self._all("SELECT id, direction, body, kind, sim_label, created_at FROM messages WHERE patient_id = ? ORDER BY id", (pid,))
@@ -118,17 +151,27 @@ class Store:
         if dup:
             return None
         return self._run("INSERT INTO alerts (patient_id, level, title, detail, rule_id, day, created_at) VALUES (?,?,?,?,?,?,?)",
-                         (pid, level, title, detail, rule_id, day, _now()))
+                         (pid, level, title, detail, rule_id, day, self.clock()))
+
+    _ALERT_COLS = "id, patient_id, level, title, detail, rule_id, day, created_at, acknowledged, acknowledged_at, ack_note, ack_by"
 
     def alerts(self, pid: str) -> list[dict[str, Any]]:
-        return self._all("SELECT id, level, title, detail, rule_id, day, created_at, acknowledged FROM alerts WHERE patient_id = ? "
+        return self._all(f"SELECT {self._ALERT_COLS} FROM alerts WHERE patient_id = ? "
                          "ORDER BY acknowledged, CASE level WHEN 'urgent' THEN 0 WHEN 'same_day' THEN 1 ELSE 2 END, id DESC", (pid,))
 
-    def acknowledge(self, alert_id: int) -> bool:
+    def all_alerts(self) -> list[dict[str, Any]]:
+        return self._all(f"SELECT {self._ALERT_COLS} FROM alerts ORDER BY id")
+
+    def acknowledge(self, alert_id: int, note: str = "", by: str = "") -> bool:
+        """Marks an alert as seen, remembering who and when. A second click never overwrites the first person's note."""
         conn = self._conn()
         try:
             with conn:
-                return conn.execute("UPDATE alerts SET acknowledged = 1 WHERE id = ?", (alert_id,)).rowcount > 0
+                if conn.execute("SELECT 1 FROM alerts WHERE id = ?", (alert_id,)).fetchone() is None:
+                    return False
+                conn.execute("UPDATE alerts SET acknowledged = 1, acknowledged_at = ?, ack_note = ?, ack_by = ? "
+                             "WHERE id = ? AND acknowledged = 0", (self.clock(), note.strip()[:500], by.strip()[:80], alert_id))
+                return True
         finally:
             conn.close()
 

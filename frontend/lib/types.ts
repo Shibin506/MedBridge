@@ -47,7 +47,7 @@ export interface PatientPlan {
   medications: PlanMedication[]; follow_ups: PlanItem[]; warning_signs: PlanItem[]; restrictions: PlanItem[];
   disclaimer: string; disclaimer_en: string;
 }
-export interface AppConfig { demo: boolean; languages: Record<string, string>; sms: boolean }
+export interface AppConfig { demo: boolean; languages: Record<string, string>; sms: boolean; team_key_required: boolean }
 
 export interface FollowUpState {
   patient: { id: string; name: string | null; mode: "simulator" | "sms"; opted_out: boolean; phone_last4: string; day: number };
@@ -80,3 +80,36 @@ export interface SafetyReport {
     contributors: { name: string; mg_per_day: number }[] }[];
 }
 export interface Extras { schedule: DailySchedule | null; safety: SafetyReport | null }
+
+// ---- care-team dashboard
+export type AlertLevel = "urgent" | "same_day" | "review";
+export type TeamStatus = "emergency" | "call_today" | "review" | "stopped" | "ok";
+export interface TeamAlert {
+  id: number; patient_id: string; patient_name: string; level: AlertLevel; title: string; detail: string; day: number;
+  created_at: string; acknowledged: boolean; acknowledged_at: string | null; note: string; by: string; next_step: string;
+}
+export interface TeamMessage { direction: "in" | "out"; body: string; kind: string; sim_label: string; created_at: string }
+export interface TeamPatient {
+  id: string; name: string; mode: "simulator" | "sms"; day: number; diagnosis: string | null; medicine_count: number;
+  status: TeamStatus; status_label: string; opted_out: boolean; open_alerts: number; open_by_level: Record<AlertLevel, number>;
+  top_alert: string | null; waiting_since: string | null;
+  weight: { latest: number; change: number; trend: number[] } | null;
+  adherence: { taken: number; missed: number; unanswered: number; rate: number | null };
+  last_from_patient: TeamMessage | null; last_to_patient: TeamMessage | null; created_at: string;
+}
+export interface DashboardData {
+  stats: { patients: number; emergency: number; call_today: number; review: number; stopped: number; ok: number;
+    open_alerts: number; seen_today: number; median_minutes_to_seen: number | null };
+  patients: TeamPatient[]; open_alerts: TeamAlert[]; seen_alerts: TeamAlert[]; generated_at: string;
+}
+export interface PatientDetailData extends Omit<FollowUpState, "alerts" | "patient" | "messages"> {
+  patient: FollowUpState["patient"] & { display_name: string };
+  messages: (FollowUpState["messages"][number] & { created_at: string })[];
+  alerts: TeamAlert[];
+  plan: {
+    diagnosis: string | null;
+    medications: { name: string; dose: string | null; frequency: string | null; duration: string | null; status: string }[];
+    follow_ups: { what: string; with_whom: string | null; when: string | null; contact: string | null }[];
+    restrictions: string[];
+  };
+}
