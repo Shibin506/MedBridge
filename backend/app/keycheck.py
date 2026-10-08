@@ -211,7 +211,42 @@ def try_restoring_prefix(key: str, model: str) -> tuple[str, bool] | None:
     return None
 
 
-def run(fix: bool = False, twilio: bool = False) -> int:
+def telegram_advise(status: int | None, bot: dict) -> list[str]:
+    """Plain-English result of testing the Telegram bot token (``bot`` is Telegram's getMe answer)."""
+    if status is None:
+        return ["Could not reach Telegram. Check your internet connection and try again."]
+    if status in (401, 404):
+        return ["FAIL: Telegram rejected the bot token.",
+                "1. Open Telegram and chat with @BotFather.",
+                "2. Send /mybots, pick your bot, then API Token (or create one with /newbot).",
+                "3. Copy the whole token (it looks like 123456789:ABC...) and run ./scripts/set-key.sh telegram again."]
+    if status != 200:
+        return [f"Telegram answered with an unexpected error ({status}). Try again in a minute."]
+    name = bot.get("username") or "your bot"
+    return [f"PASS: Telegram accepted the token. Your bot is @{name}.",
+            "Next: start MedBridge (./scripts/run-demo.sh), make a plan, press “Connect Telegram”, and open the link on your phone.",
+            "Only one copy of MedBridge can read the bot's messages at a time."]
+
+
+def run_telegram() -> int:
+    token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
+    if not token:
+        print("Telegram is not set up. Run ./scripts/set-key.sh telegram and paste the token from @BotFather.")
+        return 2
+    print(f"Testing the Telegram bot token (starts with “{token.split(':')[0][:4]}”, {len(token)} characters)...")
+    try:
+        r = httpx.get(f"https://api.telegram.org/bot{token}/getMe", timeout=20)
+        status, bot = r.status_code, (r.json().get("result") or {} if r.status_code == 200 else {})
+    except (httpx.HTTPError, ValueError):
+        status, bot = None, {}
+    print()
+    print("\n".join(telegram_advise(status, bot)))
+    return 0 if status == 200 else 1
+
+
+def run(fix: bool = False, twilio: bool = False, telegram: bool = False) -> int:
+    if telegram:
+        return run_telegram()
     if twilio:
         return run_twilio()
     if selected_provider() == "groq":

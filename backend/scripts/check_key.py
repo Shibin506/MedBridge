@@ -7,4 +7,4 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.keycheck import run  # noqa: E402
 
-sys.exit(run(fix="--fix" in sys.argv[1:], twilio="twilio" in sys.argv[1:]))
+sys.exit(run(fix="--fix" in sys.argv[1:], twilio="twilio" in sys.argv[1:], telegram="telegram" in sys.argv[1:]))

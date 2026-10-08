@@ -11,7 +11,7 @@ import type { AppConfig, Extras, ExtractionResult, FollowUpState, PatientPlan } 
 type Opts = { language: string; reading_level: string; acknowledged_unclear: boolean; acknowledged_review: boolean };
 
 export default function Home() {
-  const [config, setConfig] = useState<AppConfig>({ demo: false, languages: { en: "English" }, sms: false, team_key_required: false });
+  const [config, setConfig] = useState<AppConfig>({ demo: false, languages: { en: "English" }, sms: false, telegram: false, team_key_required: false });
   const [view, setView] = useState<"patient" | "team">("patient");
   const [teamSim, setTeamSim] = useState<FollowUpState | null>(null);   // a pretend phone opened from the care-team page
   const [followUp, setFollowUp] = useState<FollowUpState | null>(null);
@@ -49,7 +49,7 @@ export default function Home() {
     finally { setBusy(false); }
   }
 
-  async function startCheckins(choice: { mode: "simulator" | "sms"; phone?: string; consent: boolean; name?: string }) {
+  async function startCheckins(choice: { mode: "simulator" | "sms" | "telegram"; phone?: string; consent: boolean; name?: string }) {
     if (!extraction || !opts) return;
     setBusy(true); setFollowUpError(null);
     try {

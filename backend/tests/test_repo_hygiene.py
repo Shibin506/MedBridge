@@ -5,7 +5,7 @@ import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-KEY_SHAPES = re.compile(r"AIza[0-9A-Za-z_-]{20,}|AQ\.[A-Za-z0-9_-]{20,}|sk-ant-[A-Za-z0-9_-]{20,}|AC[0-9a-f]{32}\b|SK[0-9a-f]{32}\b|gsk_[A-Za-z0-9]{20,}")
+KEY_SHAPES = re.compile(r"AIza[0-9A-Za-z_-]{20,}|AQ\.[A-Za-z0-9_-]{20,}|sk-ant-[A-Za-z0-9_-]{20,}|AC[0-9a-f]{32}\b|SK[0-9a-f]{32}\b|gsk_[A-Za-z0-9]{20,}|\b\d{8,10}:[A-Za-z0-9_-]{35}\b")
 
 
 def tracked_files() -> list[Path]:
@@ -19,7 +19,7 @@ def test_env_example_has_no_values():
     """.env.example is a public template: every KEY= line must be empty (or a +1555 style placeholder)."""
     for n, line in enumerate((ROOT / ".env.example").read_text().splitlines(), 1):
         m = re.match(r"^\s*#?\s*([A-Z][A-Z0-9_]*)=(.*)$", line)
-        if m and m.group(1) in {"GROQ_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY", "ANTHROPIC_API_KEY", "LLM_API_KEY", "TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN"}:
+        if m and m.group(1) in {"GROQ_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY", "ANTHROPIC_API_KEY", "LLM_API_KEY", "TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TELEGRAM_BOT_TOKEN"}:
             assert m.group(2).strip() == "", f".env.example line {n}: {m.group(1)} must stay empty. Put real keys in .env only."
 
 

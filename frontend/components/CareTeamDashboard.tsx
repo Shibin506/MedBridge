@@ -154,7 +154,7 @@ export default function CareTeamDashboard({ config, onOpenSimulator }: { config:
                         <button className="linkish" onClick={() => void open(p.id)}>{p.name}</button>
                         <div className="small">Day {p.day}{p.diagnosis ? ` · ${brief(p.diagnosis)}` : ""}</div>
                       </td>
-                      <td data-label="Latest">{p.top_alert ?? (p.opted_out ? "Replied STOP" : "—")}
+                      <td data-label="Latest">{p.top_alert ?? (!p.connected ? "Has not connected Telegram yet" : p.opted_out ? "Replied STOP" : "—")}
                         {p.waiting_since && <div className="small">waiting {ago(p.waiting_since).replace(" ago", "")}</div>}</td>
                       <td data-label="Weight">{p.weight ? <>{p.weight.latest} lb <span className="small">({p.weight.change > 0 ? "+" : ""}{p.weight.change})</span> <Spark values={p.weight.trend} /></> : "—"}</td>
                       <td data-label="Medicines">{p.adherence.rate === null ? "—" : `${Math.round(p.adherence.rate * 100)}% confirmed`}

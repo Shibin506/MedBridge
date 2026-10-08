@@ -39,6 +39,22 @@ wrongly, which is a good measure of how well a given model follows the "copy exa
    (Vertex) key, add `GEMINI_BACKEND=vertex` to `.env`. `./scripts/check-key.sh --fix` repairs a key that lost its `AQ.` start.
 3. To use Gemini when a Groq key is also saved, set `MEDBRIDGE_LLM=gemini` in `.env`.
 
+## 2a. Free phone messages: a Telegram bot (no carrier approval, no trial limits)
+
+Twilio's free trial only allows its own ready-made templates, and US carriers block new numbers for days. A Telegram bot has neither problem, costs nothing,
+and needs no public web address. The patient needs the free Telegram app. (Twilio SMS stays in MedBridge for real deployments.)
+
+1. In Telegram, search for **@BotFather** (the one with the blue check) and send `/newbot`.
+2. Give it a name (for example `MedBridge Demo`) and a username that ends in `bot` (for example `medbridge_demo_bot`).
+3. BotFather replies with a token like `123456789:ABC...`. Treat it like a password.
+4. In the MedBridge folder run `./scripts/set-key.sh telegram`, paste the token (nothing shows), press Enter. It saves `.env` and tests it.
+5. Test any time with `./scripts/check-key.sh telegram`.
+6. Start MedBridge (`./scripts/run-demo.sh`), make a plan, press **Connect Telegram**, open the link on your phone and press **Start**.
+
+How it works: the link carries a one-time secret; pressing Start tells MedBridge which Telegram chat is the patient (and counts as agreeing to messages).
+MedBridge asks Telegram for new messages every few seconds, so nothing needs to be reachable from the internet. Only **one** copy of MedBridge can read the bot's
+messages at a time (a second one gets error 409). Messages are plain text and are sent at the same times as the SMS ones.
+
 ## 2. Text messages: Twilio (for real texts; the phone simulator needs none of this)
 
 What Twilio calls things: the **Account SID** (starts with `AC`), the **Auth Token**, and **a phone number**. (Twilio "API keys" starting with `SK` are not needed.)

@@ -2,7 +2,7 @@
 
 How it works, in plain words:
   * Every patient has a timeline for one day (the 8:00 reminder, the 12:00 reminder, the 9:00 check-in...), built from their confirmed plan.
-  * Every 30 seconds ``tick`` looks at each real-text patient: which of today's texts are due now and not yet sent?
+  * Every 30 seconds ``tick`` looks at each real-message patient (SMS or a linked Telegram chat): which of today's texts are due now and not yet sent?
   * "Not yet sent" is remembered in the database (``last_event``), so a restart never repeats a text.
   * Only texts that became due AFTER the patient signed up are sent (signing up at 3 PM does not fire the 8 AM reminder).
   * A text that is more than GRACE_MINUTES late (the server was off) is NOT sent: a "take your medicine" text hours late can mislead.
@@ -78,7 +78,7 @@ def due_events(p: dict[str, Any], now: datetime) -> list[Due]:
     ex = CheckInEngine.extraction(p)
     events = timeline(ex)
     tz = _zone(p["timezone"])
-    enrolled = _parse(p["created_at"]).astimezone(tz)
+    enrolled = _parse(p["linked_at"] or p["created_at"]).astimezone(tz)      # Telegram patients start when they press Start
     today = now.astimezone(tz).date()
     first = max(enrolled.date(), today - timedelta(days=LOOKBACK_DAYS))
     out: list[Due] = []
@@ -101,7 +101,7 @@ def next_due(p: dict[str, Any], now: datetime) -> tuple[datetime, str] | None:
     if not events:
         return None
     tz = _zone(p["timezone"])
-    enrolled = _parse(p["created_at"]).astimezone(tz)
+    enrolled = _parse(p["linked_at"] or p["created_at"]).astimezone(tz)
     start = now.astimezone(tz)
     d = max(enrolled.date(), start.date())
     for _ in range(3):
@@ -118,7 +118,8 @@ def tick(store: Store, make_engine: Callable[[Store], CheckInEngine], now: datet
     now = now or datetime.now(timezone.utc)
     sent = 0
     for p in store.all_patients():
-        if p["mode"] != "sms" or p["opted_out"] or not p["consent"]:
+        reachable = (p["mode"] == "sms" and p["consent"]) or (p["mode"] == "telegram" and p["chat_id"])
+        if not reachable or p["opted_out"]:
             continue
         try:
             engine = make_engine(store)

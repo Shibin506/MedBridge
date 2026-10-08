@@ -14,8 +14,17 @@ export default function FollowUpStep({ initial, onBack, backLabel = "← Back to
   const thread = useRef<HTMLDivElement>(null);
   const pid = state.patient.id;
   const isSim = state.patient.mode === "simulator";
+  const isTelegram = state.patient.mode === "telegram";
+  const waitingForStart = isTelegram && state.telegram?.linked === false;
 
   useEffect(() => { thread.current?.scrollTo({ top: thread.current.scrollHeight }); }, [state.messages.length]);
+
+  // Real messages arrive on their own (a reply from the phone, or the patient pressing Start): look for them every few seconds.
+  useEffect(() => {
+    if (isSim) return;
+    const timer = setInterval(() => { if (!document.hidden) getFollowUp(pid).then(setState).catch(() => undefined); }, 4000);
+    return () => clearInterval(timer);
+  }, [isSim, pid]);
 
   async function run(fn: () => Promise<FollowUpState>) {
     setBusy(true); setError(null);
@@ -39,8 +48,30 @@ export default function FollowUpStep({ initial, onBack, backLabel = "← Back to
       <p className="lead">
         {isSim
           ? "This is a pretend phone. No real texts are sent. Press “Next text” to move through the day, and reply as the patient would."
-          : `Real texts are going to the phone ending in ${state.patient.phone_last4}. Replies appear here.`}
+          : isTelegram
+            ? "Real messages go to the patient's Telegram. Replies appear here by themselves."
+            : `Real texts are going to the phone ending in ${state.patient.phone_last4}. Replies appear here.`}
       </p>
+
+      {waitingForStart && (
+        <section className="card notice" aria-label="Connect Telegram">
+          <h2>Connect Telegram</h2>
+          {state.telegram?.link_url ? (
+            <>
+              <ol>
+                <li>Open this link on the phone that has Telegram (or on this computer if Telegram is installed).</li>
+                <li>Press <strong>Start</strong> in the chat that opens. Pressing Start means you agree to receive messages.</li>
+              </ol>
+              <p><a className="btn primary" href={state.telegram.link_url} target="_blank" rel="noopener noreferrer">Open Telegram</a></p>
+              <p className="small">Waiting for you to press Start… this page updates by itself. The link works once.</p>
+            </>
+          ) : (
+            <p role="alert" className="error">
+              {state.telegram?.problem ?? "The Telegram link could not be made."} Check that the bot token is saved (./scripts/check-key.sh telegram) and that this computer is online.
+            </p>
+          )}
+        </section>
+      )}
 
       <div className="two-col">
         <section className="card phone" aria-label="Text messages">
@@ -56,19 +87,20 @@ export default function FollowUpStep({ initial, onBack, backLabel = "← Back to
           </div>
 
           <div className="row">
-            {state.next_event && !state.patient.opted_out && (
+            {state.next_event && !state.patient.opted_out && !waitingForStart && (
               <button className={`btn ${isSim ? "primary" : ""}`} disabled={busy} onClick={() => run(() => advance(pid))}>
                 {isSim ? "Next text" : "Send now (for testing)"}: {state.next_event.label}
               </button>
             )}
           </div>
-          {!isSim && !state.patient.opted_out && (
+          {!isSim && !state.patient.opted_out && !waitingForStart && (
             <p className="small">
               {state.scheduled_next
                 ? <>Texts go out by themselves at the right time{state.timezone ? ` (${state.timezone})` : ""}. Next one: <strong>{state.scheduled_next.label}</strong>.</>
                 : "No more scheduled texts."}
             </p>
           )}
+          {!waitingForStart && <>
           <div className="row chips" aria-label="Quick replies">
             {chips.map((c) => (
               <button key={c} className="btn chip" disabled={busy} onClick={() => run(() => sendReply(pid, c.replace(/^Yes, I took them$/, "yes").replace(/^No, I couldn't$/, "no")))}>
@@ -80,6 +112,7 @@ export default function FollowUpStep({ initial, onBack, backLabel = "← Back to
             <input aria-label="Type a reply" placeholder="Type a reply…" value={text} onChange={(e) => setText(e.target.value)} style={{ flex: 1 }} />
             <button className="btn" disabled={busy || !text.trim()} type="submit">Send</button>
           </form>
+          </>}
           {error && <p role="alert" className="error">{error}</p>}
           <p className="small">Texting is not for emergencies. In an emergency, call 911.</p>
         </section>

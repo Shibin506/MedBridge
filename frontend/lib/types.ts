@@ -47,10 +47,10 @@ export interface PatientPlan {
   medications: PlanMedication[]; follow_ups: PlanItem[]; warning_signs: PlanItem[]; restrictions: PlanItem[];
   disclaimer: string; disclaimer_en: string;
 }
-export interface AppConfig { demo: boolean; languages: Record<string, string>; sms: boolean; team_key_required: boolean }
+export interface AppConfig { demo: boolean; languages: Record<string, string>; sms: boolean; telegram: boolean; team_key_required: boolean }
 
 export interface FollowUpState {
-  patient: { id: string; name: string | null; mode: "simulator" | "sms"; opted_out: boolean; phone_last4: string; day: number };
+  patient: { id: string; name: string | null; mode: "simulator" | "sms" | "telegram"; opted_out: boolean; phone_last4: string; day: number };
   messages: { id: number; direction: "in" | "out"; body: string; kind: string; sim_label: string; delivery?: string }[];
   alerts: { id: number; level: "urgent" | "same_day" | "review"; title: string; detail: string; day: number; acknowledged: boolean }[];
   weights: { day: number; pounds: number }[];
@@ -61,6 +61,7 @@ export interface FollowUpState {
   checkin_asks_weight: boolean;
   scheduled_next?: { at: string; label: string } | null;   // real texts only: when the next text goes out by itself
   timezone?: string;
+  telegram?: { linked: boolean; link_url: string | null; problem: string | null };   // Telegram patients: has the patient pressed Start yet?
 }
 
 export interface ScheduleItem { name: string; dose: string | null; note: string | null; status: Status }
@@ -92,9 +93,9 @@ export interface TeamAlert {
 }
 export interface TeamMessage { direction: "in" | "out"; body: string; kind: string; sim_label: string; created_at: string }
 export interface TeamPatient {
-  id: string; name: string; mode: "simulator" | "sms"; day: number; diagnosis: string | null; medicine_count: number;
+  id: string; name: string; mode: "simulator" | "sms" | "telegram"; day: number; diagnosis: string | null; medicine_count: number;
   status: TeamStatus; status_label: string; opted_out: boolean; open_alerts: number; open_by_level: Record<AlertLevel, number>;
-  top_alert: string | null; waiting_since: string | null;
+  top_alert: string | null; waiting_since: string | null; connected: boolean;
   weight: { latest: number; change: number; trend: number[] } | null;
   adherence: { taken: number; missed: number; unanswered: number; rate: number | null };
   last_from_patient: TeamMessage | null; last_to_patient: TeamMessage | null; created_at: string;
@@ -104,7 +105,8 @@ export interface DashboardData {
     open_alerts: number; seen_today: number; median_minutes_to_seen: number | null };
   patients: TeamPatient[]; open_alerts: TeamAlert[]; seen_alerts: TeamAlert[]; generated_at: string;
 }
-export interface PatientDetailData extends Omit<FollowUpState, "alerts" | "patient" | "messages"> {
+export interface PatientDetailData extends Omit<FollowUpState, "alerts" | "patient" | "messages" | "telegram"> {
+  telegram?: { linked: boolean };
   patient: FollowUpState["patient"] & { display_name: string };
   messages: (FollowUpState["messages"][number] & { created_at: string })[];
   alerts: TeamAlert[];

@@ -80,9 +80,11 @@ def clinic_line(ex: ExtractionResult) -> str:
 
 
 class CheckInEngine:
-    def __init__(self, store: Store, sender: Callable[[str, str], None] | None = None):
+    def __init__(self, store: Store, sender: Callable[[str, str], None] | None = None,
+                 telegram: Callable[[str, str], None] | None = None):
         self.store = store
-        self.sender = sender  # delivers a text to a real phone (None for the on-screen simulator)
+        self.sender = sender      # delivers a text to a real phone (None for the on-screen simulator)
+        self.telegram = telegram  # delivers a message to a patient's Telegram chat
 
     # ---- helpers -----------------------------------------------------------------
     def _patient(self, pid: str) -> dict[str, Any]:
@@ -100,9 +102,14 @@ class CheckInEngine:
 
     def _send(self, p: dict[str, Any], body: str, kind: str, time: str | None = None) -> None:
         message_id = self.store.add_message(p["id"], "out", body, kind, self._label(p, time))
-        if self.sender and p["mode"] == "sms" and p["phone"] and not p["opted_out"]:
+        deliver, address = None, ""
+        if p["mode"] == "sms" and self.sender and p["phone"]:
+            deliver, address = self.sender, p["phone"]
+        elif p["mode"] == "telegram" and self.telegram and p["chat_id"]:
+            deliver, address = self.telegram, p["chat_id"]
+        if deliver and not p["opted_out"]:
             try:
-                self.sender(p["phone"], body)
+                deliver(address, body)
             except Exception as exc:  # a text that never arrived must not disappear silently
                 self.store.mark_delivery(message_id, "failed")
                 self.store.add_alert(p["id"], rf.REVIEW, "A text message could not be delivered", str(exc)[:240],

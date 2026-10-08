@@ -73,3 +73,30 @@ def test_set_key_twilio_warns_about_odd_values_and_refuses_empty_ones(tmp_path):
     empty = run_script(tmp_path / "e", f"{SID}\n\n+15551234567\n", "twilio") if (tmp_path / "e").mkdir() is None else None
     assert empty.returncode == 1 and "All three values are needed" in empty.stdout
     assert not (tmp_path / "e" / ".env").exists()
+
+
+# ---------- Telegram ----------
+def test_telegram_pass_names_the_bot():
+    from app.keycheck import telegram_advise
+    out = "\n".join(telegram_advise(200, {"username": "MedBridgeDemoBot"}))
+    assert "PASS" in out and "@MedBridgeDemoBot" in out and "Connect Telegram" in out
+
+
+def test_telegram_bad_token_says_what_to_do():
+    from app.keycheck import telegram_advise
+    out = "\n".join(telegram_advise(401, {}))
+    assert "FAIL" in out and "BotFather" in out and "set-key.sh telegram" in out
+    assert "internet" in "\n".join(telegram_advise(None, {}))
+
+
+def test_set_key_telegram_saves_the_token_and_never_prints_it(tmp_path):
+    token = "123456789" + ":" + "ABCdefGhIJKlmNoPQRsTUVwxyz012345678"
+    work = tmp_path / "repo"
+    (work / "scripts").mkdir(parents=True)
+    for f in ("set-key.sh", "load-env.sh"):
+        shutil.copy(ROOT / "scripts" / f, work / "scripts" / f)
+    (work / ".env.example").write_text("# TELEGRAM_BOT_TOKEN=\n")
+    out = subprocess.run(["bash", "scripts/set-key.sh", "telegram"], cwd=work, input=token + "\n", capture_output=True, text=True,
+                         env={**os.environ, "MEDBRIDGE_SKIP_CHECK": "1"})
+    assert out.returncode == 0 and token not in out.stdout + out.stderr
+    assert f"TELEGRAM_BOT_TOKEN={token}" in (work / ".env").read_text()

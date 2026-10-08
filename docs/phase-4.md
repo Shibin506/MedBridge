@@ -52,9 +52,9 @@ confirmed plan --POST /patients--> patient saved (SQLite)
 `./scripts/run-demo.sh`, upload a fictional paper, confirm, make the plan, then **Try it on the phone simulator**.
 Press **Next text** to move through the day. Try: `172 and no symptoms`, then next day `176 and my ankles are swollen`, then `I have chest pain`.
 
-## Reminder timer (real texts)
+## Reminder timer (real messages)
 
-For **real texts** a timer (`app/scheduler.py`) sends each reminder and the morning check-in by itself, at the right time **in the patient's own time zone**.
+For **real messages** (Twilio texts or Telegram) a timer (`app/scheduler.py`) sends each reminder and the morning check-in by itself, at the right time **in the patient's own time zone**.
 The phone simulator is still stepped by hand with "Next text".
 
 - Every 30 seconds the server checks each real-text patient: which of today's texts are due and not yet sent? What was sent is remembered in the database, so a restart never repeats a text.
@@ -65,6 +65,10 @@ The phone simulator is still stepped by hand with "Next text".
 - One patient's error never stops everyone else's texts.
 - The server must be **running** for texts to go out: if your laptop sleeps, reminders do not send. `MEDBRIDGE_SCHEDULER=off` turns the timer off.
 - On a real patient's screen, "Send now (for testing)" sends the next text immediately, which is handy for a demo.
+
+## Real messages on Telegram (free)
+
+See "2a" in [setup-keys.md](setup-keys.md). The patient presses **Connect Telegram**, opens the link and presses Start; reminders, check-ins, replies, STOP and alerts then work exactly as in the simulator. A message Telegram refuses (for example the patient blocked the bot) is shown as **Not delivered** and raises a care-team alert.
 
 ## Real texts with Twilio
 
@@ -82,6 +86,6 @@ The webhook accepts only requests signed by Twilio (forged or unsigned ones get 
 - **No timer yet.** Reminders go out when someone presses **Next text** (or calls the API). A background scheduler with each patient's time zone is the next step for real use.
 - **Texts are in English.** The plan can be translated, the texts cannot yet.
 - **Keyword rules, not understanding.** Unusual wording can be missed. That is why unclear, worrying messages go to a person, but a calm-sounding message about a real problem could slip through. Never present this as a replacement for a nurse.
-- **No login and no encryption.** Anyone who can reach the API can read a patient's data, and the SQLite file is plain. **Do not expose it to the internet or use real patient data** until accounts, encryption and a privacy agreement exist. (The Twilio webhook is signed; the other endpoints are not.)
+- **No login and no encryption.** Anyone who can reach the API can read a patient's data, and the SQLite file is plain. **Do not expose it to the internet or use real patient data** (Telegram messages are not private from Telegram or MedBridge's own server either) until accounts, encryption and a privacy agreement exist. (The Twilio webhook is signed; the other endpoints are not.)
 - **SMS is not an emergency channel.** Carriers can delay or block texts. US trial numbers may be blocked entirely until registered (error 30034); use the simulator if that happens.
 - **Units:** weights are in pounds (kilograms are converted).

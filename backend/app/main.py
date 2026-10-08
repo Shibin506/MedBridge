@@ -2,6 +2,7 @@ import asyncio
 import hmac
 import logging
 import os
+import secrets
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -23,6 +24,7 @@ from .safety import SafetyChecker, build_live_checker
 from .schedule import build_schedule
 from .sms import build_sender, normalize_phone, twilio_configured, valid_signature
 from .store import Store
+from .telegram import TelegramClient, TelegramError, build_client, handle_update, link_url, poll_once, telegram_configured
 from .schemas import DailySchedule, ExtractionResult, PatientPlan, PlanRequest, SafetyReport
 
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
@@ -30,10 +32,45 @@ SAMPLES_DIR = Path(__file__).resolve().parent.parent / "samples"
 
 log = logging.getLogger("uvicorn.error")  # shows up in the same terminal as the server
 
+_telegram: TelegramClient | None = None
+
+
+def get_telegram() -> TelegramClient | None:
+    """One shared client, so the bot's name is looked up once."""
+    global _telegram
+    if _telegram is None:
+        _telegram = build_client()
+    return _telegram
+
+
+def _telegram_sender():
+    tg = get_telegram()
+    return (lambda chat_id, body: tg.send(chat_id, body)) if tg else None
+
+
+def _make_engine(store: Store) -> CheckInEngine:
+    return CheckInEngine(store, sender=build_sender(), telegram=_telegram_sender())
+
+
+async def _telegram_loop() -> None:
+    while True:
+        try:
+            tg = get_telegram()
+            if tg is None:
+                return
+            await asyncio.to_thread(lambda: poll_once(Store(), _make_engine, tg))
+        except TelegramError as exc:
+            log.warning("Telegram: %s", exc)
+            await asyncio.sleep(15)
+        except Exception:
+            log.exception("Telegram pass failed")
+            await asyncio.sleep(15)
+
+
 async def _scheduler_loop() -> None:
     while True:
         try:
-            await asyncio.to_thread(lambda: scheduler.tick(Store(), lambda s: CheckInEngine(s, sender=build_sender())))
+            await asyncio.to_thread(lambda: scheduler.tick(Store(), _make_engine))
         except Exception:
             log.exception("Scheduler pass failed")
         await asyncio.sleep(scheduler.TICK_SECONDS)
@@ -41,12 +78,16 @@ async def _scheduler_loop() -> None:
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    task = asyncio.create_task(_scheduler_loop()) if scheduler.enabled() else None
-    if task:
-        log.info("Reminder scheduler is running (a pass every %d s; real-text patients only).", scheduler.TICK_SECONDS)
+    tasks = []
+    if scheduler.enabled():
+        tasks.append(asyncio.create_task(_scheduler_loop()))
+        log.info("Reminder scheduler is running (a pass every %d s; real-message patients only).", scheduler.TICK_SECONDS)
+    if telegram_configured() and os.environ.get("MEDBRIDGE_TELEGRAM", "on").lower() not in {"off", "0", "false", "no"}:
+        tasks.append(asyncio.create_task(_telegram_loop()))
+        log.info("Telegram bot is connected: listening for patients' messages.")
     yield
-    if task:
-        task.cancel()
+    for t in tasks:
+        t.cancel()
 
 
 app = FastAPI(title="MedBridge API", version="0.2.0", lifespan=lifespan)
@@ -109,7 +150,7 @@ def health() -> dict[str, str]:
 @app.get("/config")
 def config() -> dict:
     """What the UI needs to know at startup."""
-    return {"demo": demo_mode(), "languages": LANGUAGES, "sms": twilio_configured(), "team_key_required": bool(team_key())}
+    return {"demo": demo_mode(), "languages": LANGUAGES, "sms": twilio_configured(), "telegram": telegram_configured(), "team_key_required": bool(team_key())}
 
 
 @app.get("/samples")
@@ -171,14 +212,14 @@ def get_store() -> Store:
 
 
 def get_engine(store: Store = Depends(get_store)) -> CheckInEngine:
-    return CheckInEngine(store, sender=build_sender())
+    return _make_engine(store)
 
 
 class CreatePatient(BaseModel):
     plan: PlanRequest
     name: str | None = Field(default=None, max_length=80)
     phone: str | None = Field(default=None, max_length=30)
-    mode: Literal["simulator", "sms"] = "simulator"
+    mode: Literal["simulator", "sms", "telegram"] = "simulator"
     consent_sms: bool = False
     timezone: str = Field(default="", max_length=64)   # the browser's zone, e.g. "America/Chicago"; decides when 8:00 AM is
 
@@ -199,10 +240,16 @@ def create_patient(body: CreatePatient, store: Store = Depends(get_store), engin
             raise HTTPException(status_code=422, detail="Please enter a full phone number, for example +15551234567.")
         if not body.consent_sms:
             raise HTTPException(status_code=409, detail="We can only text you if you agree to receive text messages.")
+    link_token = ""
+    if body.mode == "telegram":
+        if not telegram_configured():
+            raise HTTPException(status_code=409, detail="Telegram is not set up on this server. Use the phone simulator.")
+        link_token = secrets.token_urlsafe(12)
     pid = store.create_patient(name=body.name, phone=phone, mode=body.mode, consent=body.consent_sms,
                                language=body.plan.language, extraction_json=body.plan.extraction.model_dump_json(),
-                               timezone=scheduler.resolve_timezone(body.timezone))
-    engine.start(pid)
+                               timezone=scheduler.resolve_timezone(body.timezone), link_token=link_token)
+    if body.mode != "telegram":
+        engine.start(pid)           # a Telegram patient gets the welcome message the moment they press Start
     return _state(engine, pid)
 
 
@@ -212,7 +259,17 @@ def _state(engine: CheckInEngine, pid: str) -> dict:
     p = engine.store.get_patient(pid) or {}
     state["scheduled_next"] = None
     state["timezone"] = p.get("timezone") or ""
-    if p.get("mode") == "sms" and not p.get("opted_out"):
+    if p.get("mode") == "telegram":
+        link, problem = None, None
+        if not p.get("chat_id") and p.get("link_token"):
+            tg = get_telegram()
+            try:
+                link = link_url(tg.username(), p["link_token"]) if tg else None
+            except TelegramError as exc:
+                problem = str(exc)
+        state["telegram"] = {"linked": bool(p.get("chat_id")), "link_url": link, "problem": problem}
+    reachable = p.get("mode") == "sms" or (p.get("mode") == "telegram" and p.get("chat_id"))
+    if reachable and not p.get("opted_out"):
         nxt = scheduler.next_due(p, datetime.now(timezone.utc))
         if nxt:
             state["scheduled_next"] = {"at": nxt[0].isoformat(), "label": nxt[1]}
@@ -233,6 +290,9 @@ def get_patient_state(pid: str, engine: CheckInEngine = Depends(get_engine)) -> 
 @app.post("/patients/{pid}/advance")
 def advance(pid: str, engine: CheckInEngine = Depends(get_engine)) -> dict:
     _known(engine, pid)
+    p = engine.store.get_patient(pid) or {}
+    if p.get("mode") == "telegram" and not p.get("chat_id"):
+        raise HTTPException(status_code=409, detail="This patient has not connected Telegram yet: open the link and press Start first.")
     engine.advance(pid)
     return _state(engine, pid)
 

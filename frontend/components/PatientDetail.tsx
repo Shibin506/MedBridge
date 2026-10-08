@@ -31,7 +31,9 @@ export default function PatientDetail({ data, status, onBack, onSeen, onOpenSimu
       </div>
       <p className="lead">
         {plan.diagnosis ? `${plan.diagnosis.replace(/[.\s]+$/, "")}. ` : ""}Day {data.patient.day} of check-ins ·{" "}
-        {data.patient.mode === "simulator" ? "pretend phone (no real texts)" : `texts go to the phone ending in ${data.patient.phone_last4}`}
+        {data.patient.mode === "simulator" ? "pretend phone (no real texts)"
+          : data.patient.mode === "telegram" ? (data.telegram?.linked === false ? "Telegram (has not pressed Start yet)" : "messages go to the patient's Telegram")
+          : `texts go to the phone ending in ${data.patient.phone_last4}`}
         {data.patient.opted_out ? " · the patient turned texts off" : ""}
       </p>
       {data.patient.opted_out && (

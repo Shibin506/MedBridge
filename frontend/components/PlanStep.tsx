@@ -22,7 +22,7 @@ function ItemList({ items }: { items: PlanItem[] }) {
 interface Props {
   plan: PatientPlan; extras: Extras | null; config: AppConfig; busy: boolean; error: string | null;
   onBack: () => void; onLanguage: (code: string) => void;
-  onStartCheckins: (c: { mode: "simulator" | "sms"; phone?: string; consent: boolean; name?: string }) => void; checkinError: string | null;
+  onStartCheckins: (c: { mode: "simulator" | "sms" | "telegram"; phone?: string; consent: boolean; name?: string }) => void; checkinError: string | null;
 }
 
 export default function PlanStep({ plan, extras, config, busy, error, onBack, onLanguage, onStartCheckins, checkinError }: Props) {
@@ -107,6 +107,15 @@ export default function PlanStep({ plan, extras, config, busy, error, onBack, on
             Try it on the phone simulator
           </button>
         </div>
+        {config.telegram && (
+          <div className="form">
+            <h3>Get the messages on Telegram (free)</h3>
+            <p className="small">Real messages on your phone with no phone-company approval. You open a link and press Start in Telegram; pressing Start means you agree to receive messages. Reply STOP any time.</p>
+            <button className="btn primary" disabled={busy} onClick={() => onStartCheckins({ mode: "telegram", consent: true, name: name.trim() || undefined })}>
+              Connect Telegram
+            </button>
+          </div>
+        )}
         {config.sms && (
           <div className="form">
             <label>Your mobile number (for example +15551234567)

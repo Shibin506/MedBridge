@@ -105,6 +105,7 @@ def _patient_row(store: Store, p: dict[str, Any], alerts: list[dict[str, Any]]) 
         "status": status,
         "status_label": STATUS_LABEL[status],
         "opted_out": bool(p["opted_out"]),
+        "connected": p["mode"] != "telegram" or bool(p["chat_id"]),     # a Telegram patient who never pressed Start cannot be reached
         "open_alerts": len(open_alerts),
         "open_by_level": {lv: sum(a["level"] == lv for a in open_alerts) for lv in (rf.URGENT, rf.SAME_DAY, rf.REVIEW)},
         "top_alert": headline(open_alerts[0]["level"], open_alerts[0]["rule_id"], open_alerts[0]["title"]) if open_alerts else None,
@@ -176,4 +177,6 @@ def patient_detail(engine: CheckInEngine, pid: str) -> dict[str, Any]:
         "restrictions": [r.instruction for r in ex.restrictions],
     }
     state["patient"]["display_name"] = _display_name(p)
+    if p["mode"] == "telegram":
+        state["telegram"] = {"linked": bool(p["chat_id"])}          # never the one-time connect link: it would let anyone connect as this patient
     return state

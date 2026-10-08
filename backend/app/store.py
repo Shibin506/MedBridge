@@ -21,8 +21,10 @@ CREATE TABLE IF NOT EXISTS patients (
   opted_out INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL,
   sim_day INTEGER NOT NULL DEFAULT 0, sim_cursor INTEGER NOT NULL DEFAULT 0,
   awaiting TEXT NOT NULL DEFAULT '', language TEXT NOT NULL DEFAULT 'en', extraction TEXT NOT NULL,
-  timezone TEXT NOT NULL DEFAULT '', last_event TEXT NOT NULL DEFAULT ''
+  timezone TEXT NOT NULL DEFAULT '', last_event TEXT NOT NULL DEFAULT '',
+  chat_id TEXT NOT NULL DEFAULT '', link_token TEXT NOT NULL DEFAULT '', linked_at TEXT NOT NULL DEFAULT ''
 );
+CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS messages (
   id INTEGER PRIMARY KEY AUTOINCREMENT, patient_id TEXT NOT NULL, direction TEXT NOT NULL, body TEXT NOT NULL,
   kind TEXT NOT NULL, sim_label TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, delivery TEXT NOT NULL DEFAULT ''
@@ -68,7 +70,7 @@ class Store:
                 if "delivery" not in {r["name"] for r in conn.execute("PRAGMA table_info(messages)")}:
                     conn.execute("ALTER TABLE messages ADD COLUMN delivery TEXT NOT NULL DEFAULT ''")
                 have = {r["name"] for r in conn.execute("PRAGMA table_info(patients)")}
-                for col in ("timezone", "last_event"):
+                for col in ("timezone", "last_event", "chat_id", "link_token", "linked_at"):
                     if col not in have:
                         conn.execute(f"ALTER TABLE patients ADD COLUMN {col} TEXT NOT NULL DEFAULT ''")
         finally:
@@ -97,15 +99,38 @@ class Store:
 
     # ---- patients -----------------------------------------------------
     def create_patient(self, *, name: str | None, phone: str | None, mode: str, consent: bool, language: str, extraction_json: str,
-                       pid: str | None = None, timezone: str = "") -> str:
+                       pid: str | None = None, timezone: str = "", link_token: str = "") -> str:
         pid = pid or uuid.uuid4().hex[:12]
-        self._run("INSERT INTO patients (id, name, phone, mode, consent, created_at, language, extraction, timezone) VALUES (?,?,?,?,?,?,?,?,?)",
-                  (pid, name, phone, mode, int(consent), self.clock(), language, extraction_json, timezone))
+        self._run("INSERT INTO patients (id, name, phone, mode, consent, created_at, language, extraction, timezone, link_token) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                  (pid, name, phone, mode, int(consent), self.clock(), language, extraction_json, timezone, link_token))
         return pid
 
     def get_patient(self, pid: str) -> dict[str, Any] | None:
         rows = self._all("SELECT * FROM patients WHERE id = ?", (pid,))
         return rows[0] if rows else None
+
+    def find_by_link_token(self, token: str) -> dict[str, Any] | None:
+        if not token:
+            return None
+        rows = self._all("SELECT * FROM patients WHERE link_token = ? AND mode = 'telegram' AND chat_id = ''", (token,))
+        return rows[0] if rows else None
+
+    def find_by_chat(self, chat_id: str) -> dict[str, Any] | None:
+        if not chat_id:
+            return None
+        rows = self._all("SELECT * FROM patients WHERE chat_id = ? AND mode = 'telegram' ORDER BY linked_at DESC, created_at DESC LIMIT 1", (chat_id,))
+        return rows[0] if rows else None
+
+    def link_telegram(self, pid: str, chat_id: str) -> None:
+        """The patient tapped Start in Telegram: remember the chat, count that as agreeing to messages, and retire the one-time link."""
+        self._run("UPDATE patients SET chat_id = ?, consent = 1, linked_at = ?, link_token = '' WHERE id = ?", (chat_id, self.clock(), pid))
+
+    def get_kv(self, key: str, default: str = "") -> str:
+        rows = self._all("SELECT value FROM kv WHERE key = ?", (key,))
+        return rows[0]["value"] if rows else default
+
+    def set_kv(self, key: str, value: str) -> None:
+        self._run("INSERT INTO kv (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", (key, value))
 
     def all_patients(self) -> list[dict[str, Any]]:
         return self._all("SELECT * FROM patients ORDER BY created_at, id")

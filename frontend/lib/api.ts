@@ -53,7 +53,7 @@ export const getSchedule = (body: PlanBody) => post<DailySchedule>("/api/schedul
 export const getSafety = (body: PlanBody) => post<SafetyReport>("/api/safety", body);
 
 export const createPatient = (body: {
-  plan: PlanBody; mode: "simulator" | "sms"; phone?: string; consent_sms?: boolean; name?: string; timezone?: string;
+  plan: PlanBody; mode: "simulator" | "sms" | "telegram"; phone?: string; consent_sms?: boolean; name?: string; timezone?: string;
 }) => fetch("/api/patients", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
   .then((r) => parse<FollowUpState>(r));
 export const getFollowUp = (id: string) => fetch(`/api/patients/${id}`).then((r) => parse<FollowUpState>(r));

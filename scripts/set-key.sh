@@ -5,6 +5,7 @@
 #   ./scripts/set-key.sh          Groq (free, key starts with gsk_)   <- default
 #   ./scripts/set-key.sh gemini   Google Gemini
 #   ./scripts/set-key.sh twilio   Twilio (text messages): Account SID, Auth Token and your phone number
+#   ./scripts/set-key.sh telegram Telegram bot (free phone messages): the token from @BotFather
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -34,10 +35,27 @@ if [ "$PROVIDER" = "twilio" ]; then
   exec ./scripts/check-key.sh twilio
 fi
 
+if [ "$PROVIDER" = "telegram" ]; then
+  printf 'Paste the bot token from @BotFather (looks like 123456789:ABC...), then press Enter (hidden): '
+  IFS= read -rs token || true; echo
+  token="$(printf '%s' "$token" | tr -d '[:space:]"'"'"'')"
+  [ -n "$token" ] || { echo "Nothing was pasted. Nothing was saved."; exit 1; }
+  case "$token" in [0-9]*:*) ;; *) echo "!! A Telegram bot token looks like 123456789:ABC... (numbers, a colon, then letters). Yours does not, so part of it was probably not copied." ;; esac
+  [ -f .env ] || cp .env.example .env
+  tmp="$(mktemp)"
+  grep -v '^TELEGRAM_BOT_TOKEN=' .env > "$tmp" || true
+  { printf 'TELEGRAM_BOT_TOKEN=%s\n' "$token"; cat "$tmp"; } > .env
+  rm -f "$tmp"; chmod 600 .env
+  echo "Saved to .env (token ${#token} characters)"
+  [ "${MEDBRIDGE_SKIP_CHECK:-}" = 1 ] && exit 0
+  echo
+  exec ./scripts/check-key.sh telegram
+fi
+
 case "$PROVIDER" in
   groq)   VAR=GROQ_API_KEY;   LABEL="Groq";   WHERE="https://console.groq.com/keys";   GOOD1="gsk_*"; GOOD2="gsk_*"; STARTS="gsk_" ;;
   gemini) VAR=GEMINI_API_KEY; LABEL="Gemini"; WHERE="https://aistudio.google.com/apikey"; GOOD1="AIza*"; GOOD2="AQ.*"; STARTS="AIza or AQ." ;;
-  *) echo "Unknown provider '$PROVIDER'. Use: groq, gemini or twilio"; exit 1 ;;
+  *) echo "Unknown provider '$PROVIDER'. Use: groq, gemini, twilio or telegram"; exit 1 ;;
 esac
 
 printf 'Paste your %s API key, then press Enter (nothing will show while you paste): ' "$LABEL"
