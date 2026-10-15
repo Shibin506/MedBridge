@@ -282,6 +282,7 @@ class CheckInEngine:
 
         message_flags = rf.evaluate_message(text, rf.rules_from_paper(ex))
         flags += message_flags
+        flags += [f for f in rf.check_reported_gain(rf.weight_rules(ex), text) if not any(x.rule_id.startswith("weight") for x in flags)]
         if not flags and not handled and not keep_waiting and rf.sounds_concerning(text):
             flags.append(rf.Flag(rf.REVIEW, "review", "Message needs a person to read it",
                                  f"Patient wrote: “{text[:200]}”. No rule matched, so a person should read it.", ""))

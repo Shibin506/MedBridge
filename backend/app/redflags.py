@@ -37,25 +37,27 @@ CONCEPTS: list[Concept] = [
     _c("chest_pain", "chest pain", r"chest (pain|pressure|tightness|hurts?|is hurting|feels? (tight|heavy))|(pain|pressure|tightness|squeezing|heaviness) (in|on) (my |the )?chest|"
        r"heart attack|elephant on my chest"),
     _c("breathing", "trouble breathing",
-       r"short(ness)? of breath|can'?t breathe|cannot breathe|trouble breathing|hard to breathe|difficulty breathing|"
-       r"out of breath|gasping|struggling to breathe|breathless|wheez",
+       r"short(ness)? of breath|can'?t breathe?\b|cannot breathe?\b|trouble breathing|hard(er)? to breathe?\b|difficulty breathing|"
+       r"out of breath|gasping|struggling to breathe|breathless|wheez|(can'?t|cannot|trouble) (catch|catching) my breath|breathing (is )?(getting )?(worse|harder)",
        r"short(ness)? of breath|trouble breathing|difficulty breathing|breathing|breathless"),
     _c("fainting", "fainting", r"faint(ed|ing)?\b|passed out|blacked out|black(ed)? out|unconscious|collapsed|unresponsive", r"faint|unconscious|passing out"),
     _c("stroke", "stroke signs",
-       r"face (is )?(drooping|droopy)|slurred speech|can'?t (move|lift) (my )?(arm|leg)|weak(ness)? on (one|my) side|"
-       r"sudden (numbness|confusion|trouble speaking)", r"stroke|face droop|slurred"),
-    _c("blood_up", "coughing or vomiting blood", r"(vomit(ing|ed)?|throwing up|coughing( up)?|cough(ed)? up) (some )?blood|blood in (my )?(vomit|cough)",
+       r"face (is )?(drooping|droopy)|slurred speech|can'?t (move|lift|feel) (my )?(left |right )?(arm|leg)|weak(ness)? on (one|my) side|"
+       r"numb(ness)? (on|in) (one|my (left|right)) (side|arm|leg|face)|one side of (my )?(body|face)|(left|right) (arm|leg|side) (is |feels )?(numb|weak|limp)|"
+       r"sudden(ly)? (numbness|confusion|trouble speaking|weak(ness)?|trouble seeing)", r"stroke|face droop|slurred"),
+    _c("blood_up", "coughing or vomiting blood", r"(vomit(ing|ed)?|throwing up|threw up|puked|coughing( up)?|cough(ed)? up) (some |a lot of )?blood|blood in (my )?(vomit|cough)",
        r"(vomit|cough)\w* (up )?blood|blood in (the )?(vomit|cough)|blood"),
     _c("foamy", "pink foamy mucus", r"pink,? foamy", r"pink,? foamy"),
     _c("bleeding", "bleeding", r"bleed(ing|s)|blood (is )?(soaking|pouring)", r"bleed"),
     _c("anaphylaxis", "throat swelling", r"throat (is )?(closing|swelling)|can'?t swallow|(tongue|lips|face) (is |are )?(swelling|swollen)",
        r"throat|tongue|lips|allergic reaction"),
-    _c("suicidal", "thoughts of self-harm", r"kill myself|end my life|suicid|want to die|better off dead|hurt myself", r"suicid|self-harm|harm yourself"),
+    _c("suicidal", "thoughts of self-harm", r"kill myself|end my life|suicid|want to die|better off dead|hurt(ing)? myself|harm(ing)? myself|"
+       r"(don'?t|do not|no longer) want to (live|be here|go on)|no reason to live|end it all|take my own life|wish i (was|were) dead", r"suicid|self-harm|harm yourself"),
     _c("swelling", "swelling", r"swell(ing|s)?\b|swollen|puffy|bloated", r"swell|puffy|bloated"),
     _c("dizziness", "dizziness", r"dizz(y|iness)|light-?headed|room (is )?spinning|woozy", r"dizz|light-?headed"),
     _c("fast_heartbeat", "a fast heartbeat", r"(fast|racing|pounding|rapid|irregular) (heart ?beat|heart|pulse)|heart (is )?racing|palpitations",
        r"heart ?beat|palpitation|racing heart"),
-    _c("orthopnea", "needing more pillows", r"more pillows|can'?t lie (flat|down)|wak(e|ing) up (short of breath|gasping)", r"pillows|lie flat"),
+    _c("orthopnea", "needing more pillows", r"(more|extra|\d+|two|three|several) pillows|pillows to (sleep|breathe)|can'?t lie (flat|down)|wak(e|ing) up (short of breath|gasping)", r"pillows|lie flat"),
     _c("fever", "fever", r"fever|chills|feel(ing)? feverish", r"fever|temperature|chills"),
     _c("vomiting", "vomiting", r"vomit|throwing up|can'?t keep (anything|food|pills|medicine|my medicine) down", r"vomit|nausea that"),
     _c("diarrhea", "diarrhea", r"diarrh?ea|loose stools?", r"diarrh?ea"),
@@ -66,20 +68,24 @@ CONCEPTS: list[Concept] = [
     _c("yellow", "yellow skin or eyes", r"yellow(ing)? (skin|eyes)|jaundice", r"yellow|jaundice"),
     _c("belly_pain", "belly pain", r"(belly|stomach|abdominal|abdomen) (pain|cramps?|hurts?)|pain in (my )?(belly|stomach|abdomen)", r"(belly|abdominal|stomach) pain"),
     _c("confusion", "confusion", r"confus(ed|ion)|don'?t know where i am|not making sense", r"confus"),
-    _c("blue", "blue lips or fingertips", r"(blue|gray|grey) (lips|fingertips|fingers)|lips (are |look )?blue", r"blue|bluish"),
+    _c("blue", "blue lips or fingertips", r"(blue|gray|grey|purple) (lips|fingertips|fingers)|(lips|fingertips|fingers|nails) (are |look |turning |turned |going )?(blue|gray|grey|purple)|(turning|turned|going) blue", r"blue|bluish"),
+    _c("seizure", "a seizure", r"seizure|convuls(ion|ing)|shaking uncontrollably", r"seizure|convuls"),
+    _c("thunder_headache", "a sudden severe headache", r"worst headache|headache.{0,25}worst|thunderclap", r"worst headache|thunderclap"),
+    _c("cough", "cough", r"\bcough(ing|s)?\b", r"cough"),
 ]
 BY_ID = {c.id: c for c in CONCEPTS}
 
 # Always an emergency, with or without a paper.
-UNIVERSAL_URGENT = {"chest_pain", "fainting", "stroke", "blood_up", "anaphylaxis", "suicidal", "foamy", "blue"}
+UNIVERSAL_URGENT = {"chest_pain", "fainting", "stroke", "blood_up", "anaphylaxis", "suicidal", "foamy", "blue", "seizure", "thunder_headache"}
 # Only an emergency when the message also sounds severe.
 SEVERE_ONLY = {"breathing", "bleeding", "belly_pain"}
 _SEVERE = re.compile(r"severe|very bad|really bad|terrible|worst|unbearable|can'?t breathe|cannot breathe|gasping|won'?t stop|will not stop|"
-                     r"soaking|pouring|a lot|heavily|struggling|can'?t catch my breath|constant", re.I)
+                     r"soaking|pouring|a lot|heavily|struggling|can'?t catch my breath|can'?t breathe?\b|constant|getting worse", re.I)
 _NEGATORS = {"no", "not", "without", "never", "denies", "deny", "none", "nothing", "dont", "don't", "didnt", "didn't", "havent",
              "haven't", "hasnt", "hasn't", "isnt", "isn't", "arent", "aren't", "wasnt", "wasn't", "free"}
 _CONCERN = re.compile(r"\b(worse|worsening|bad|terrible|awful|sick|unwell|pain|painful|hurts?|hurting|bleed\w*|blood|scared|worried|"
-                      r"help|emergency|dying|ill|trouble)\b", re.I)
+                      r"help|emergency|dying|ill|trouble|weak|weakness|exhausted|afraid|anxious|chills|fever)\b|"
+                      r"vomit\w*|throwing up|threw up|can'?t keep (anything|food|pills|medicine|my \w+) down|something'?s? (is )?(wrong|off)|(don'?t|do not) feel (right|well|good)|not feeling (right|well|good)|can'?t (eat|sleep|walk|get up)", re.I)
 
 
 def _words_before(text: str, pos: int, n: int = 5) -> list[str]:
@@ -134,19 +140,53 @@ def is_call_action(action: str) -> bool:
     return bool(_CALL_ACTION.search(action or "")) and not re.match(r"\s*(do not|don't|avoid|never)\b", action, re.I)
 
 
+_CLAUSE = re.compile(r",|;|\bor\b", re.I)
+# "bleeding that will not stop", "fever that lasts more than 48 hours", "severe trouble breathing": the paper means the serious version only.
+_QUALIFIED = re.compile(r"severe|serious|heavy|heavily|will not stop|won'?t stop|does not stop|doesn'?t stop|that (lasts|persists)|lasts? (more|longer)|"
+                        r"for (more|longer) than|soaking", re.I)
+
+
+def _clause_at(text: str, pos: int) -> str:
+    """The part of a list-like sentence ("A, B, or C that will not stop") that contains position ``pos``."""
+    start, end = 0, len(text)
+    for m in _CLAUSE.finditer(text):
+        if m.end() <= pos:
+            start = m.end()
+        elif m.start() > pos:
+            end = m.start()
+            break
+    return text[start:end]
+
+
+# A more specific symptom in the same part of the sentence replaces a general one: "vomiting blood" is not "vomiting".
+_MORE_SPECIFIC = {"blood_up": {"vomiting", "bleeding", "cough"}, "foamy": {"cough"}}
+
+
 def rules_from_paper(ex: ExtractionResult) -> list[Rule]:
+    """One rule per symptom named in each warning sign. A sign is often a long list ("chest pain, trouble breathing, or vomiting blood"),
+    so each symptom is judged by its own part of the sentence: a qualifier such as "that will not stop" or "severe" applies only there
+    (a message that does not sound that serious gets "call your doctor today" plus when to call 911), and "vomiting blood" does not
+    turn every mention of vomiting into a 911 rule."""
     rules: list[Rule] = []
     for n, sign in enumerate(ex.warning_signs):
         if not is_call_action(sign.action):
             continue
         text = sign.symptom
         level = URGENT if re.search(r"911|emergency", f"{sign.action} {sign.symptom}", re.I) else SAME_DAY
-        matched = [c for c in CONCEPTS if c.paper.search(text)]
-        severe_text = bool(re.search(r"severe|serious", text, re.I))
-        for c in matched:
-            rules.append(Rule(f"paper{n}:{c.id}", level, c.id, sign.symptom, sign.action,
-                              needs_severity=(severe_text and c.id in SEVERE_ONLY)))
-        if not matched and _tokens(text):
+        hits: dict[str, list[str]] = {}                      # concept -> the clauses it appears in
+        for c in CONCEPTS:
+            for m in c.paper.finditer(text):
+                hits.setdefault(c.id, []).append(_clause_at(text, m.start()))
+        for specific, general in _MORE_SPECIFIC.items():
+            for clause in hits.get(specific, []):
+                for g in general & hits.keys():
+                    hits[g] = [cl for cl in hits[g] if cl != clause]
+        for cid, clauses in hits.items():
+            if not clauses:
+                continue
+            needs = cid not in UNIVERSAL_URGENT and all(_QUALIFIED.search(cl) for cl in clauses)   # one plain mention is enough
+            rules.append(Rule(f"paper{n}:{cid}", level, cid, sign.symptom, sign.action, needs_severity=needs))
+        if not any(hits.values()) and _tokens(text):
             rules.append(Rule(f"paper{n}:words", level, None, sign.symptom, sign.action, tokens=_tokens(text)))
     return rules
 
@@ -265,6 +305,30 @@ def check_weight(rules: list[WeightRule], history: dict[int, float], day: int, p
                               f"Weight today {pounds:g} lb, earlier {base:g} lb. Their paper says: {r.action} if “{r.paper_text}”.", r.action,
                               short=f"Weight up {gain:g} lb in {'1 day' if r.days == 1 else f'{r.days} days'}"))
     return flags[:1]  # one event, one alert: the stricter window wins
+
+
+_GAIN = re.compile(r"(?:gain(?:ed)?|put on|added|up)\s+(?:about |around |almost |over |another |like )?(\d+(?:\.\d+)?)\s*(?:lbs?\.?|pounds?)", re.I)
+_GAIN_DAY = re.compile(r"yesterday|overnight|last night|since (this )?morning|in (a|one|1) day|one day|\btoday\b|a day\b", re.I)
+_GAIN_WEEK = re.compile(r"this week|past week|last week|in (a|one|1) week|7 days|few days|couple (of )?days|week", re.I)
+
+
+def check_reported_gain(rules: list[WeightRule], text: str) -> list[Flag]:
+    """A gain the patient STATES ("I gained 4 pounds since yesterday") against the paper's limit. If no time period is given it is
+    checked against the strictest limit, because it may have happened in a day (a person decides)."""
+    m = _GAIN.search(text)
+    if not m or not rules or negated(text, m.start()):
+        return []
+    gain = float(m.group(1))
+    window = 1 if _GAIN_DAY.search(text) else 7 if _GAIN_WEEK.search(text) else None
+    for r in sorted(rules, key=lambda r: r.days):
+        if (window is None or window <= r.days) and gain > r.pounds:
+            urgent = bool(re.search(r"911", r.action))
+            span = "1 day" if r.days == 1 else f"{r.days} days"
+            note = "" if window is not None else " (the patient did not say over how long, so the strictest limit was used)"
+            return [Flag(URGENT if urgent else SAME_DAY, "weight:reported", f"Patient reports gaining {gain:g} lb",
+                         f"Patient wrote: “{text.strip()[:200]}”. Their paper says: {r.action} if “{r.paper_text}”{note}.", r.action,
+                         short=f"Weight up {gain:g} lb")]
+    return []
 
 
 _WEIGHT_NUMBER = re.compile(r"(?<![\d.])(\d{2,3}(?:\.\d)?)(?![\d.])\s*(kg|kgs|kilos?|lbs?\.?|pounds?)?", re.I)
