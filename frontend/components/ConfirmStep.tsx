@@ -67,7 +67,7 @@ export default function ConfirmStep({ extraction: ex, config, busy, error, onCha
       </p>
 
       <div className="two-col">
-        <section className="paper card" aria-label="Your paper">
+        <section className="paper card" aria-label="Your paper" tabIndex={0}>
           <h2>Your paper</h2>
           <pre>
             {range ? (

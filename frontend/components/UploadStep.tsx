@@ -37,6 +37,12 @@ export default function UploadStep({ onDone }: { onDone: (ex: ExtractionResult) 
         Upload the instructions the hospital gave you. We will show you what we understood, you check it,
         and then we make a plan in plain language.
       </p>
+      <ol className="steps" aria-label="How MedBridge works">
+        <li><strong>1. We read your paper</strong><span>AI pulls out your medicines, appointments, warning signs and instructions.</span></li>
+        <li><strong>2. You check it</strong><span>Every item shows the exact words it came from. Nothing is used until you confirm it.</span></li>
+        <li><strong>3. We help every day</strong><span>A plain-language plan, a daily schedule, safety checks, and check-ins that alert your care team if something sounds wrong.</span></li>
+      </ol>
+      <p className="small">The AI only reads and rewords. Plain code checks every fact against your paper and decides every alert.</p>
 
       <div
         className="drop"

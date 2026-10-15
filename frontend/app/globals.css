@@ -67,8 +67,8 @@ mark { background: #ffe066; color: #111; padding: 1px 2px; border-radius: 3px; }
 .form label, label.inline { display: grid; gap: 2px; font-size: .88rem; color: var(--muted); }
 label.inline { display: flex; gap: 8px; align-items: center; }
 input, select { font: inherit; padding: 8px 10px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--card); color: var(--ink); min-height: 40px; }
-.check { display: flex; gap: 10px; align-items: center; font-weight: 600; margin-top: 8px; }
-.check input { width: 22px; height: 22px; }
+label.check { display: flex; gap: 10px; align-items: center; font-weight: 600; margin-top: 8px; }
+label.check input { width: 22px; height: 22px; flex: none; }
 
 .med { padding: 10px 0; border-top: 1px solid var(--line); } .med:first-of-type { border-top: 0; }
 .med p { margin: 4px 0; } .dose { font-weight: 500; color: var(--muted); margin: 0 6px; }
@@ -125,7 +125,7 @@ ul.plain { padding-left: 18px; margin: 6px 0; } ul.plain li { margin: 4px 0; }
 .tile .n { font-size: 1.6rem; font-weight: 800; line-height: 1.1; } .tile span:last-child { font-size: .8rem; color: var(--muted); }
 .tile.emergency:not(.zero) { border-color: var(--danger); background: var(--danger-soft); } .tile.emergency:not(.zero) .n { color: var(--danger); }
 .tile.call_today:not(.zero) { border-color: var(--warn); background: var(--warn-soft); } .tile.call_today:not(.zero) .n { color: var(--warn); }
-.tile.zero { opacity: .6; } .tile.on { box-shadow: 0 0 0 3px var(--brand); }
+.tile.zero .n { color: var(--muted); font-weight: 600; } .tile.on { box-shadow: 0 0 0 3px var(--brand); }
 @media (max-width: 760px) { .tiles { grid-template-columns: repeat(3, 1fr); } }
 
 table.team { width: 100%; border-collapse: collapse; font-size: .92rem; }
@@ -144,3 +144,8 @@ table.team td svg { color: var(--brand); vertical-align: middle; }
 @media (max-width: 560px) { .tag { display: none; } }
 
 .bubble .not-delivered { font-size: .75rem; font-weight: 700; color: var(--danger); background: var(--danger-soft); padding: 2px 8px; border-radius: 6px; margin-top: 4px; }
+
+.steps { list-style: none; padding: 0; margin: 12px 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.steps li { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: var(--bg); display: grid; gap: 4px; }
+.steps span { font-size: .88rem; color: var(--muted); }
+@media (max-width: 760px) { .steps { grid-template-columns: 1fr; } }

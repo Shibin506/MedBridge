@@ -258,7 +258,7 @@ class DemoExtractionClient:
             if marker in text:
                 return SimpleNamespace(parsed_output=ExtractionDraft.model_validate(data), stop_reason="end_turn")
         empty = dict(diagnosis_summary=None, medications=[], follow_ups=[], warning_signs=[], restrictions=[],
-                     unclear_items=["Demo mode only understands the three built-in sample documents."])
+                     unclear_items=["Demo mode only understands the four built-in sample documents."])
         return SimpleNamespace(parsed_output=ExtractionDraft.model_validate(empty), stop_reason="end_turn")
 
 
