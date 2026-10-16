@@ -28,6 +28,66 @@ and gets a person involved the moment a reply sounds wrong.
 | **A worrying reply: the paper's own words, and the care team is told** | **The care team sees everyone, worst first** |
 | ![Check-in alert](docs/images/5-checkin-alert.png) | ![Care-team dashboard](docs/images/7-care-team.png) |
 
+## Architecture
+
+```mermaid
+flowchart TD
+    P(["Patient or caregiver"]) -->|"uploads the discharge paper (PDF or text)"| EXT
+
+    EXT["1 Read: extractor.py<br/>AI pulls out medicines, appointments,<br/>warning signs, each with its source quote"]
+    VER["2 Verify: verify.py, coverage.py<br/>code finds every quote, drug name<br/>and number in the paper, flags the rest"]
+    CONF{{"3 Confirm<br/>the patient checks each item<br/>against the paper"}}
+    PLAN["4a Plan: plan.py<br/>AI rewords in plain language (8 languages),<br/>code checks no fact changed"]
+    SAFE["4b Schedule and safety: schedule.py, safety.py, totals.py<br/>daily times, duplicates, stopped medicines,<br/>interactions, daily limits"]
+    ENG["5 Check in: checkins.py, redflags.py, scheduler.py<br/>reminders on time; every reply judged by rules<br/>from the patient's own paper"]
+    DB[("SQLite<br/>patients, messages, alerts")]
+    BOARD["6 Escalate: dashboard.py<br/>every patient ranked worst first,<br/>alert inbox with notes"]
+    N(["Nurse or care team"])
+
+    EXT --> VER --> CONF
+    CONF -->|"confirmed items only"| PLAN
+    CONF --> SAFE
+    PLAN --> ENG
+    SAFE --> ENG
+    ENG --> DB --> BOARD --> N
+
+    LLM["AI model<br/>Groq, Gemini or Claude<br/>(demo mode: none)"]
+    FDA["openFDA labels, RxNorm"]
+    CH["Telegram bot, Twilio SMS,<br/>or the phone simulator"]
+    PH(["Patient's phone"])
+
+    EXT -.-> LLM
+    PLAN -.-> LLM
+    SAFE -.-> FDA
+    ENG <-.-> CH <-.-> PH
+
+    classDef ai fill:#fff4d6,stroke:#8a5a00,color:#3a2a00
+    classDef code fill:#e1f2f0,stroke:#0b6b66,color:#06201e
+    classDef person fill:#ece6ff,stroke:#5b3fb8,color:#21154a
+    classDef ext fill:#f2f4f6,stroke:#8a96a0,color:#14212b,stroke-dasharray: 4 3
+    class EXT,PLAN ai
+    class VER,SAFE,ENG,BOARD,DB code
+    class P,N,CONF person
+    class LLM,FDA,CH,PH ext
+```
+
+Colours: **yellow** = the AI is used, **teal** = plain code decides, **purple** = a person decides, **grey dashed** = outside services (all optional).
+
+**Where the AI is, and where it is not.** The model is used in only the two yellow steps: reading the paper (`extractor.py`) and
+rewording the confirmed plan (`plan.py`). Everything after the patient confirms is plain code: the schedule, the safety checks,
+every reminder, the judgement of every reply, and the order of the care-team list. Without any API key, demo mode swaps the AI for
+pre-written answers and the rest runs unchanged.
+
+| Part | Files | What it does |
+|---|---|---|
+| Read and verify | `extractor.py`, `verify.py`, `coverage.py`, `documents.py` | Turns a PDF or text into items with source quotes; code rejects any quote, drug name or number not found in the paper, and lists lines nothing used. |
+| Plan | `plan.py`, `schemas.py` | Plain-language plan in 8 languages from confirmed items only; code checks it kept every item, number and "call 911". |
+| Safety and schedule | `schedule.py`, `safety.py`, `drugs.py`, `totals.py` | Daily times, duplicate ingredients, stopped-but-listed medicines, FDA-label interaction hints, acetaminophen daily total. |
+| Check-ins | `checkins.py`, `redflags.py`, `scheduler.py` | Reminders and morning check-ins on a timer; replies judged by rules from the patient's own paper plus universal emergencies. |
+| Channels | `sms.py`, `telegram.py` | Twilio SMS (signed webhook) and a Telegram bot (long polling, no public address needed); the simulator needs neither. |
+| Care team | `dashboard.py`, `demo_patients.py` | Ranks every patient by urgency, alert inbox with notes, example patients for demos, optional access code. |
+| Storage | `store.py` | One SQLite file. Not encrypted yet: fictional data only. |
+
 ## Why you can trust what it says
 
 - **804 automated tests**, including a **336-case safety evaluation**: realistic patient messages (typos, slang, past tense,
